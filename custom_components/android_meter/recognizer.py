@@ -263,10 +263,11 @@ def _cell(image: Image.Image) -> Cell:
     A window whose grey levels hardly spread once shrunk to a cell, which
     averages the sensor's noise away, is blank. Otherwise the grey levels
     are stretched and turned so the ink is bright, then split by Otsu's
-    threshold. A digit at rest is cut down to the rows its
-    ink spans and stretched to the height of a cell, so that it fills the
-    mask whatever its size in the frame, and wherever the last drum, which
-    stops where the gas did, left it in its window.
+    threshold. A drum is at rest when little ink reaches its top and bottom
+    rows and none touches the window's edge. A digit at rest is cut down to
+    the rows its ink spans and stretched to the height of a cell, so that it
+    fills the mask whatever its size in the frame, and wherever the last
+    drum, which stops where the gas did, left it in its window.
     """
     small = image.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR)
     if _spread(small.histogram()) < MIN_CONTRAST:
@@ -282,6 +283,9 @@ def _cell(image: Image.Image) -> Cell:
     if rows is None:
         return Cell(mask, False)
     top, bottom = rows
+    if top == 0 or bottom == work.height - 1:
+        # Ink running into the edge of the window is a digit cut by it.
+        return Cell(mask, False)
     digit = work.crop((0, max(0, top - 1), work.width, min(work.height, bottom + 2)))
     return Cell(_bits(digit.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR)), True)
 
