@@ -518,7 +518,7 @@ def render(data: bytes, geometry: Geometry | None, last: Read | None) -> bytes:
 
     A window is green when the read trusted it, orange when it did not,
     and yellow before any frame was read. The nearest known digit is
-    written under it, followed by ~ when the drum was between two digits.
+    written under it, or ~ when the drum was between two digits.
     """
     frame = open_frame(data, 0 if geometry is None else geometry.rotation, "RGB")
     if geometry is not None:
@@ -533,9 +533,10 @@ def render(data: bytes, geometry: Geometry | None, last: Read | None) -> bytes:
             if last is not None and i < len(last.trusted):
                 colour = "lime" if last.trusted[i] else "orange"
                 digit = last.nearest[i]
-                label = "" if digit is None else str(digit)
                 if not last.at_rest[i]:
-                    label += "~"
+                    label = "~"
+                elif digit is not None:
+                    label = str(digit)
             draw.rectangle(
                 (left, geometry.y, right, geometry.y + geometry.height - 1),
                 outline=colour,
