@@ -58,9 +58,98 @@ jobs:
           persist-credentials: false
       - uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361 # master
 
+  # The app is built where no secret is, since the build runs the code of
+  # Gradle, its plugins and its dependencies.
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - name: Install SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;36.0.0"
+      - name: Build
+        run: ./gradlew --no-daemon :app:assembleRelease
+      - name: Name it after its version
+        run: |
+          ver=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
+          if [ -z "$ver" ]; then
+            echo "no versionName in app/build.gradle.kts" >&2
+            exit 1
+          fi
+          mkdir -p ../unsigned
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "../unsigned/android-meter-$ver.apk"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-meter-unsigned
+          path: unsigned/*.apk
+
+  # Signed on a machine of its own, which runs none of the repository's
+  # code, so the key never meets the build.
+  sign:
+    runs-on: ubuntu-latest
+    needs: android
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install apksigner
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;36.0.0"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: android-meter-unsigned
+          path: unsigned
+      - name: Sign
+        env:
+          ANDROID_METER_KEYSTORE: ${{ secrets.ANDROID_METER_KEYSTORE }}
+          ANDROID_METER_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_METER_KEYSTORE_PASSWORD }}
+        run: |
+          ks="$RUNNER_TEMP/release.jks"
+          trap 'rm -f "$ks"' EXIT
+          echo "$ANDROID_METER_KEYSTORE" | base64 -d > "$ks"
+          mkdir signed
+          for apk in unsigned/*.apk; do
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks "$ks" \
+                --ks-pass env:ANDROID_METER_KEYSTORE_PASSWORD --ks-key-alias androidmeter \
+                --v1-signing-enabled false --v2-signing-enabled true \
+                --v3-signing-enabled false --v4-signing-enabled false \
+                --alignment-preserved true --out "signed/$(basename "$apk")" "$apk"
+          done
+      # Another key in the secrets would publish an app that updates no install.
+      - name: Check the signer
+        run: |
+          cert=08f273fa8708612406ccfec3c89e9b643dd04b649242e0fce09f47ce30900a13
+          for apk in signed/*.apk; do
+            got=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk" |
+                sed -n 's/^Signer #[0-9]* certificate SHA-256 digest: //p')
+            test "$got" = "$cert" || { echo "$apk signed with $got, not $cert" >&2; exit 1; }
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-meter
+          path: signed/*.apk
+
   release:
     runs-on: ubuntu-latest
-    needs: [verify, hacs, hassfest]
+    needs: [verify, hacs, hassfest, sign]
     env:
       # A release counts once it is published with its zip: hacs.json names
       # it, so HACS and the Marketplace install it, as the README's manual
@@ -70,6 +159,8 @@ jobs:
       # before the upload or at the publish call would otherwise pass for
       # the release.
       PUBLISHED: '(.isDraft | not) and any(.assets[]; .name == "android_meter.zip")'
+      # Complete once the app is attached as well.
+      COMPLETE: '(.isDraft | not) and any(.assets[]; .name == "android_meter.zip") and any(.assets[]; .name | endswith(".apk"))'
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -105,6 +196,27 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
+          complete=$(gh release view "${{ steps.version.outputs.tag }}" \
+            --json isDraft,assets --jq "$COMPLETE" 2>/dev/null || true)
+          if [ "$complete" = "true" ]; then
+            echo "complete=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "complete=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: steps.check.outputs.complete == 'false'
+        with:
+          name: android-meter
+          path: app
+
+      # A release published before the app was part of it gets the app
+      # added, and keeps everything else.
+      - name: Attach the app
+        if: steps.check.outputs.exists == 'true' && steps.check.outputs.complete == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ steps.version.outputs.tag }}" app/*.apk
 
       - name: Build release zip
         if: steps.check.outputs.exists == 'false'
@@ -169,7 +281,7 @@ jobs:
           set -- $delays
           for i in $(seq 1 "$attempts"); do
             echo "::group::release attempt $i"
-            gh release create "$tag" "${args[@]}" dist/android_meter.zip
+            gh release create "$tag" "${args[@]}" dist/android_meter.zip app/*.apk
             rc=$?
             echo "::endgroup::"
             if [ $rc -eq 0 ]; then
