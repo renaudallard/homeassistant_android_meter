@@ -48,6 +48,10 @@ import android.os.PowerManager
  * out a little after the next picture is due, so a service that died
  * does not keep the phone awake. The phone is meant to stay on its
  * charger.
+ *
+ * Android lets a camera service start only from something the user did:
+ * the Start button, or a tap on the notification Resume posts when the
+ * service was stopped by a reboot, an update or the system itself.
  */
 class CaptureService : Service() {
     private lateinit var thread: HandlerThread
@@ -79,9 +83,25 @@ class CaptureService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            stopSelf()
-            return START_NOT_STICKY
+        val settings = Settings(this)
+        when (intent?.action) {
+            ACTION_STOP -> {
+                settings.wanted = false
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            ACTION_START -> settings.wanted = true
+            else -> {
+                /*
+                 * Restarted by the system after it killed the process. A
+                 * service started from the background may not use the
+                 * camera, so ask the user to tap instead.
+                 */
+                if (running) return START_STICKY
+                if (settings.wanted) Resume.offer(this)
+                stopSelf()
+                return START_NOT_STICKY
+            }
         }
         if (running) return START_STICKY
         try {
@@ -91,10 +111,12 @@ class CaptureService : Service() {
                 startForeground(NOTIFICATION, notification())
             }
         } catch (e: Exception) {
-            /* Restarted from the background, where the camera may not be used. */
+            /* Started from the background, where the camera may not be used. */
+            Resume.offer(this)
             stopSelf()
             return START_NOT_STICKY
         }
+        Resume.clear(this)
         val power = getSystemService(PowerManager::class.java)
         wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AndroidMeter:capture").also {
             it.setReferenceCounted(false)
@@ -136,6 +158,7 @@ class CaptureService : Service() {
     }
 
     companion object {
+        const val ACTION_START = "it.allard.androidmeter.START"
         const val ACTION_STOP = "it.allard.androidmeter.STOP"
         private const val CHANNEL = "capture"
         private const val NOTIFICATION = 1

@@ -28,15 +28,18 @@
 package it.allard.androidmeter
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.hardware.camera2.CameraCharacteristics
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.PowerManager
 import android.text.InputType
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -66,6 +69,7 @@ class MainActivity : Activity() {
     private lateinit var shoot: Button
     private lateinit var status: TextView
     private lateinit var picture: ImageView
+    private lateinit var unlimited: Button
     private var lenses: List<Lens> = emptyList()
     private var thread: HandlerThread? = null
     @Volatile private var single: Shot? = null
@@ -96,12 +100,15 @@ class MainActivity : Activity() {
         column.addView(toggle, MATCH_PARENT, WRAP_CONTENT)
         column.addView(shoot, MATCH_PARENT, WRAP_CONTENT)
         column.addView(status, MATCH_PARENT, WRAP_CONTENT)
-        column.addView(TextView(this).apply { text = getString(R.string.battery) })
+        column.addView(TextView(this).apply { text = getString(R.string.charger) })
+        unlimited = Button(this).apply { text = getString(R.string.battery) }
+        column.addView(unlimited, MATCH_PARENT, WRAP_CONTENT)
         column.addView(picture, MATCH_PARENT, WRAP_CONTENT)
         setContentView(ScrollView(this).apply { addView(column) })
 
         toggle.setOnClickListener { if (Status.running) stop() else withPermissions(::start) }
         shoot.setOnClickListener { withPermissions(::shootOnce) }
+        unlimited.setOnClickListener { askUnlimited() }
         loadLenses()
     }
 
@@ -170,10 +177,22 @@ class MainActivity : Activity() {
         url.isEnabled = !running
         camera.isEnabled = !running
         status.text = Status.text ?: getString(R.string.idle)
+        val power = getSystemService(PowerManager::class.java)
+        unlimited.visibility =
+            if (power.isIgnoringBatteryOptimizations(packageName)) View.GONE else View.VISIBLE
         Status.picture?.let { jpeg ->
             val options = BitmapFactory.Options().apply { inSampleSize = 4 }
             picture.setImageBitmap(BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, options))
         }
+    }
+
+    /* Asks Android to leave the app out of battery optimisation, so it is not stopped. */
+    @SuppressLint("BatteryLife")
+    private fun askUnlimited() {
+        startActivity(
+            Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                .setData(Uri.parse("package:$packageName"))
+        )
     }
 
     private fun withPermissions(action: () -> Unit) {
@@ -207,7 +226,7 @@ class MainActivity : Activity() {
     }
 
     private fun start() {
-        startForegroundService(Intent(this, CaptureService::class.java))
+        startForegroundService(Intent(this, CaptureService::class.java).setAction(CaptureService.ACTION_START))
     }
 
     private fun stop() {

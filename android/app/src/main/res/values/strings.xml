@@ -24,5 +24,9 @@
     <string name="send_failed_once">%1$s: not sent, %2$s.</string>
     <string name="channel">Meter watch</string>
     <string name="watching">Watching the meter</string>
-    <string name="battery">Keep the phone on its charger, and exempt the app from battery optimisation in the system settings.</string>
+    <string name="charger">Keep the phone on its charger. The pictures go on with the screen off.</string>
+    <string name="battery">Let it run without battery limits</string>
+    <string name="resume_channel">Watch stopped</string>
+    <string name="resume_title">The meter watch stopped</string>
+    <string name="resume_text">Tap to take pictures again.</string>
 </resources>

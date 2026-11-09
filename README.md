@@ -144,7 +144,10 @@ Android SDK platform 37).
    outlined. Adjust until every outline sits on its window.
 5. **Teach the reading**: in the options, type the reading the Frame image
    shows, for example `00123.456`, and save. The status turns to OK.
-6. **Start** the app. It keeps going with the screen off.
+6. **Start** the app. It keeps taking pictures with the screen off, as a
+   foreground service with its notification showing. Press **Let it run
+   without battery limits** once, so Android does not stop it to save
+   battery.
 
 The **Learnt digits** sensor says how many of the ten are known; the
 options list which ones are still missing.
@@ -193,6 +196,10 @@ learnt, since they no longer match the windows; type the reading again.
   are not read. It catches up when the meter stops. A meter that stopped
   mid-carry, with drums between two digits, keeps the reading slightly
   behind until gas flows again.
+- Android only lets an app start the camera from something the user did.
+  After a reboot, an update of the app, or Android stopping it, the app
+  therefore cannot start again on its own: it posts **The meter watch
+  stopped**, and a tap on that notification starts it again.
 - A reading typed lower than the current one is a correction. Home
   Assistant counts the difference as negative consumption and logs once
   that the sensor is not strictly increasing.

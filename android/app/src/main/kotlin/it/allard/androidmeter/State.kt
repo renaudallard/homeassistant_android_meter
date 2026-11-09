@@ -43,6 +43,11 @@ class Settings(context: Context) {
         get() = prefs.getString("camera", null)
         set(value) = prefs.edit().putString("camera", value).apply()
 
+    /* Whether the user started the watch and has not stopped it. */
+    var wanted: Boolean
+        get() = prefs.getBoolean("wanted", false)
+        set(value) = prefs.edit().putBoolean("wanted", value).apply()
+
     /* What Home Assistant last asked for, used until it answers again. */
     var interval: Int
         get() = prefs.getInt("interval", 60)
