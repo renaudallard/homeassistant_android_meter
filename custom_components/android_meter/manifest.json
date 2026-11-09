@@ -1,0 +1,13 @@
+{
+  "domain": "android_meter",
+  "name": "Android Meter",
+  "codeowners": ["@renaudallard"],
+  "config_flow": true,
+  "dependencies": ["webhook"],
+  "documentation": "https://github.com/renaudallard/homeassistant_android_meter",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/renaudallard/homeassistant_android_meter/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

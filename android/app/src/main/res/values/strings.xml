@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Android Meter</string>
+    <string name="url_hint">Webhook address from Home Assistant</string>
+    <string name="camera">Camera</string>
+    <string name="camera_entry">%1$s: %2$s, focus from %3$s</string>
+    <string name="facing_back">back</string>
+    <string name="facing_front">front</string>
+    <string name="facing_other">external</string>
+    <string name="focus_fixed">fixed focus</string>
+    <string name="focus_cm">%1$d cm</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="shoot">Take one picture</string>
+    <string name="idle">Stopped.</string>
+    <string name="bad_url">The address must start with http:// or https://.</string>
+    <string name="no_camera">This phone has no usable camera.</string>
+    <string name="denied">The camera permission is needed.</string>
+    <string name="shooting">Taking a picture…</string>
+    <string name="camera_failed">Camera failed: %1$s</string>
+    <string name="sent">%1$s: sent, Home Assistant says %2$s. Next in %3$d s.</string>
+    <string name="send_failed">%1$s: not sent, %2$s. Next in %3$d s.</string>
+    <string name="sent_once">%1$s: sent, Home Assistant says %2$s.</string>
+    <string name="send_failed_once">%1$s: not sent, %2$s.</string>
+    <string name="channel">Meter watch</string>
+    <string name="watching">Watching the meter</string>
+    <string name="battery">Keep the phone on its charger, and exempt the app from battery optimisation in the system settings.</string>
+</resources>

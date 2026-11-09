@@ -1,0 +1,98 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Android Meter",
+        "description": "Name the meter the phone will watch.",
+        "data": {
+          "name": "Name"
+        }
+      }
+    },
+    "create_entry": {
+      "default": "Enter this address in the Android Meter app on the phone:\n\n`{webhook_url}`\n\nThe phone must be on the same network as Home Assistant. Once the first frame has arrived, open this integration's options to set the crop and teach it the reading."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Meter settings",
+        "description": "The phone posts to `{webhook_url}`.\n\nLast frame: {frame} pixels. Look at the frame image entity to place the crop: from the top left corner of the first drum window to the bottom right corner of the last one, the windows only. Each window is outlined there once saved.\n\nDigits learnt: {known}. Still to learn: {unknown}. To teach it, type the reading the frame image shows; digits are also learnt on their own as the meter turns.",
+        "data": {
+          "interval": "Interval",
+          "torch": "Torch",
+          "rotation": "Rotation",
+          "x": "Crop left",
+          "y": "Crop top",
+          "width": "Crop width",
+          "height": "Crop height",
+          "gap": "Gap between windows",
+          "digits": "Drums",
+          "decimals": "Decimal drums",
+          "max_flow": "Largest flow",
+          "reading": "Reading shown on the last frame",
+          "forget": "Forget the digits learnt"
+        },
+        "data_description": {
+          "interval": "How long the phone waits between two pictures.",
+          "torch": "Light the meter for each picture.",
+          "rotation": "How far to turn the picture clockwise so the digits stand upright. The crop is measured on the turned picture.",
+          "gap": "Width of the housing between two windows, in pixels of the picture.",
+          "digits": "Number of drums, decimal ones included.",
+          "decimals": "Drums after the decimal point, usually red.",
+          "max_flow": "The most the meter can pass. 6 m³/h for a G4 meter, 10 for a G6. Readings that would need more are refused.",
+          "reading": "As printed on the drums, for example 01234.567. Leave empty to keep the current reading.",
+          "forget": "Start learning again, for instance after a wrong reading was taught. Changing the crop forgets them anyway."
+        }
+      }
+    },
+    "error": {
+      "bad_reading": "This reading does not fit the counter: check the number of drums and decimal drums.",
+      "crop_outside": "The crop goes past the edge of the last frame.",
+      "windows_too_small": "The windows are too small: each needs at least 4 pixels across and 8 down.",
+      "too_many_decimals": "There cannot be more decimal drums than drums.",
+      "no_crop": "Set the crop before teaching a reading.",
+      "no_frame": "No frame has arrived yet to teach the reading from.",
+      "nothing_at_rest": "No drum shows a whole digit on the last frame. Wait for the meter to stop and try again."
+    }
+  },
+  "selector": {
+    "rotation": {
+      "options": {
+        "0": "None",
+        "90": "90°",
+        "180": "180°",
+        "270": "270°"
+      }
+    }
+  },
+  "entity": {
+    "image": {
+      "frame": {
+        "name": "Frame"
+      }
+    },
+    "sensor": {
+      "reading": {
+        "name": "Reading"
+      },
+      "status": {
+        "name": "Status",
+        "state": {
+          "waiting": "Waiting for the phone",
+          "offline": "Phone offline",
+          "bad_frame": "Unreadable picture",
+          "no_crop": "Crop not set",
+          "bad_crop": "Crop outside the picture",
+          "untaught": "Reading to teach",
+          "unreadable": "Digits not recognised",
+          "implausible": "Implausible reading",
+          "ok": "OK"
+        }
+      },
+      "learnt_digits": {
+        "name": "Learnt digits"
+      }
+    }
+  }
+}

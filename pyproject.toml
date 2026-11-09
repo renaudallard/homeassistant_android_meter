@@ -1,0 +1,25 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+timeout = 120
+# Let Home Assistant install its httpx alias before respx is imported, as
+# the pytest-homeassistant README asks.
+addopts = "-p no:respx"
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+extend-exclude = ["tmp"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.mypy]
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true

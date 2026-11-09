@@ -1,0 +1,8 @@
+# Pinned so a green run here means a green run anywhere. The pinned
+# homeassistant is also the floor hacs.json declares, and
+# pytest-homeassistant is released by Home Assistant with the same version.
+homeassistant==2026.11.0
+mypy==2.3.1
+pytest-homeassistant==2026.11.0
+pytest-timeout==2.4.0
+ruff==0.16.6

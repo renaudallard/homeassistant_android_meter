@@ -1,0 +1,193 @@
+name: Autorelease
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - custom_components/android_meter/manifest.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Two manifest bumps in quick succession would otherwise race on git tag and
+# gh release create. Serialise them per ref and never cancel a run in
+# progress, so no release is left half published. Only one run can wait in
+# the group, and a newer push replaces it: a version bumped over before its
+# run started gets no release of its own, its changes go out with the next.
+concurrency:
+  group: autorelease-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # A version that fails the suite must not reach HACS users.
+  verify:
+    uses: ./.github/workflows/test.yml
+    # The test suite installs and runs third-party packages; it needs no
+    # write token, and a reusable workflow gets the caller's.
+    permissions:
+      contents: read
+
+  # Nor one HACS or hassfest would refuse.
+  hacs:
+    runs-on: ubuntu-latest
+    # Pinned, but the action runs the ghcr.io/hacs/action:main image, which
+    # its repository moves, so it gets no write token from the
+    # workflow-level grant.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main
+        with:
+          category: integration
+
+  hassfest:
+    runs-on: ubuntu-latest
+    # Pinned, but the action runs the untagged ghcr.io/home-assistant/hassfest
+    # image, which Home Assistant moves, so it gets no write token from the
+    # workflow-level grant.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361 # master
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [verify, hacs, hassfest]
+    env:
+      # A release counts once it is published with its zip: hacs.json names
+      # it, so HACS and the Marketplace install it, as the README's manual
+      # install does.
+      # gh release create makes a draft, uploads, then publishes, and the
+      # lookup by tag finds a draft too, so one left by a create that died
+      # before the upload or at the publish call would otherwise pass for
+      # the release.
+      PUBLISHED: '(.isDraft | not) and any(.assets[]; .name == "android_meter.zip")'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: |
+          ver=$(jq -r .version custom_components/android_meter/manifest.json)
+          if [ -z "$ver" ] || [ "$ver" = "null" ]; then
+            echo "no version in manifest.json" >&2
+            exit 1
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "tag=v$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Check if the release exists
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The release, not the tag. The tag is pushed before the release is
+          # created, so when every attempt below fails it is already on
+          # origin, and a re-run that tested the tag would skip the release
+          # and end green with nothing published.
+          # The step runs under bash -e and the lookup fails whenever there
+          # is no release yet, which is the usual case, hence the || true.
+          published=$(gh release view "${{ steps.version.outputs.tag }}" \
+            --json isDraft,assets --jq "$PUBLISHED" 2>/dev/null || true)
+          if [ "$published" = "true" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build release zip
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          # zip stores what a symbolic link points at, a folder's files
+          # included, so a link in the component, to the runner's temp folder
+          # where the checkout keeps this job's token or to anything else on
+          # the runner, would ship it to every installation. The repository
+          # holds none, so one is refused rather than zipped; find also names
+          # custom_components or the component itself when either is a link.
+          links=$(find custom_components -type l)
+          if [ -n "$links" ]; then
+            echo "symbolic links under custom_components, not released:" >&2
+            printf '%s\n' "$links" >&2
+            exit 1
+          fi
+          mkdir -p dist
+          cd custom_components/android_meter
+          zip -qr ../../dist/android_meter.zip . \
+            -x '*.pyc' '__pycache__/*' '*/__pycache__/*'
+          cd ../..
+          unzip -l dist/android_meter.zip
+
+      - name: Tag and release
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          tag="${{ steps.version.outputs.tag }}"
+          # Tag and push stay outside the retry loop: on a re-run after every
+          # attempt below failed the tag is already on origin, and the run
+          # still has to go on to create the release. The push fails
+          # harmlessly on a tag that exists, as it would locally.
+          git tag "$tag"
+          git push origin "$tag"
+          # GitHub guesses the previous release when it writes the notes, and
+          # can guess wrong. Hand it the highest tag below this one.
+          git fetch --tags --quiet origin
+          # Sort every tag plus this one by version and take the line
+          # before it: the highest other tag is not the same thing once a
+          # fix lands on an older line.
+          prev=$( { git tag --list 'v*'; echo "$tag"; } | sort -uV | awk -v t="$tag" '$0 == t {exit} {p = $0} END {print p}')
+          args=(--title "$tag" --generate-notes)
+          if [ -n "$prev" ]; then
+            args+=(--notes-start-tag "$prev")
+          fi
+          # A draft an earlier attempt left behind is dropped before the next
+          # one, keeping the tag. Only a draft: the lookup finds a published
+          # release first, and that is never deleted.
+          drop_draft() {
+            if [ "$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)" = "true" ]; then
+              gh release delete "$tag" --yes
+            fi
+          }
+          drop_draft
+          # gh release create is the call a 5xx from GitHub's API loses a
+          # release to. Retried five times with a growing pause, so one blip
+          # does not strand a tag without its zip.
+          attempts=5
+          delays="10 30 60 120"
+          set -- $delays
+          for i in $(seq 1 "$attempts"); do
+            echo "::group::release attempt $i"
+            gh release create "$tag" "${args[@]}" dist/android_meter.zip
+            rc=$?
+            echo "::endgroup::"
+            if [ $rc -eq 0 ]; then
+              break
+            fi
+            # An attempt that died mid-call may still have published the
+            # release; that is success. A draft is not.
+            if [ "$(gh release view "$tag" --json isDraft,assets --jq "$PUBLISHED" 2>/dev/null)" = "true" ]; then
+              echo "release $tag already published, treating as success"
+              rc=0
+              break
+            fi
+            drop_draft
+            if [ "$i" -lt "$attempts" ]; then
+              sleep_for=$1
+              shift
+              echo "release attempt $i failed (exit $rc), sleeping ${sleep_for}s..." >&2
+              sleep "$sleep_for"
+            fi
+          done
+          exit $rc

@@ -1,0 +1,20 @@
+{
+  "entity": {
+    "image": {
+      "frame": {
+        "default": "mdi:camera"
+      }
+    },
+    "sensor": {
+      "reading": {
+        "default": "mdi:meter-gas"
+      },
+      "status": {
+        "default": "mdi:list-status"
+      },
+      "learnt_digits": {
+        "default": "mdi:numeric"
+      }
+    }
+  }
+}
