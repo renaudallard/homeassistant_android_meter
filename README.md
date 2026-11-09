@@ -1,19 +1,85 @@
-# Android Meter
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="custom_components/android_meter/brand/dark_logo.png"/>
+    <img src="custom_components/android_meter/brand/logo.png" alt="Android Meter" width="512"/>
+  </picture>
+</p>
 
-Read a mechanical gas meter with an old Android phone stuck to it, and feed
-the reading to Home Assistant's Energy dashboard.
+<p align="center">
+  <a href="https://github.com/renaudallard/homeassistant_android_meter/releases/latest">
+    <img src="https://img.shields.io/github/v/release/renaudallard/homeassistant_android_meter?label=version&style=flat-square&sort=semver" alt="Latest release"/>
+  </a>
+  <a href="https://github.com/renaudallard/homeassistant_android_meter/releases">
+    <img src="https://img.shields.io/github/downloads/renaudallard/homeassistant_android_meter/total?style=flat-square&label=downloads" alt="Downloads"/>
+  </a>
+  <a href="https://github.com/renaudallard/homeassistant_android_meter/actions/workflows/validate.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/renaudallard/homeassistant_android_meter/validate.yml?style=flat-square&label=hacs%20%2F%20hassfest" alt="Validate"/>
+  </a>
+  <a href="https://github.com/renaudallard/homeassistant_android_meter/actions/workflows/test.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/renaudallard/homeassistant_android_meter/test.yml?style=flat-square&label=tests" alt="Tests"/>
+  </a>
+  <a href="https://github.com/renaudallard/homeassistant_android_meter/actions/workflows/android.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/renaudallard/homeassistant_android_meter/android.yml?style=flat-square&label=android" alt="Android"/>
+  </a>
+  <a href="https://www.home-assistant.io/">
+    <img src="https://img.shields.io/badge/Home%20Assistant-2026.11%2B-41BDF5?logo=home-assistant&logoColor=white&style=flat-square" alt="Home Assistant"/>
+  </a>
+  <a href="https://hacs.xyz">
+    <img src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square" alt="HACS"/>
+  </a>
+  <a href="./LICENSE">
+    <img src="https://img.shields.io/github/license/renaudallard/homeassistant_android_meter?style=flat-square" alt="License"/>
+  </a>
+  <a href="https://www.paypal.me/RenaudAllard">
+    <img src="https://img.shields.io/badge/PayPal-Donate-blue.svg?logo=paypal&style=flat-square" alt="PayPal"/>
+  </a>
+</p>
+
+---
+
+Read a **mechanical gas meter** with an old Android phone stuck to it, and
+feed the reading to Home Assistant's **Energy dashboard**.
 
 The phone sits on the meter in a magnetic holder and takes a picture of the
 counter every minute or so, torch on. It posts each picture to Home
-Assistant, which reads the drums itself and keeps a gas sensor in m³. No
-cloud, no OCR service, nothing pre-trained: the integration learns the
-digits of your meter from a reading you type in once.
+Assistant, which reads the drums itself and keeps a gas sensor in m³.
 
-Two parts live in this repository:
+**Nothing pre-trained, no cloud.** The integration learns the digits of
+your own meter from one reading you type in, and the pictures never leave
+your network.
 
-- `custom_components/android_meter`, the Home Assistant integration
-  (Home Assistant 2026.11.0 or later);
-- `android`, the Android Meter app for the phone (Android 9 or later).
+<p align="center">
+  <img src="assets/frame.jpg" alt="The Frame image: each drum window outlined, the digit read under it" width="640"/>
+</p>
+<p align="center"><sub>
+The Frame image, drawn by the integration on a synthetic counter. Green
+windows were read; the last drum is turning, so it is left out and the
+reading stays at 01284.390 until it stops.
+</sub></p>
+
+> Two parts live in this repository: the Home Assistant integration in
+> `custom_components/android_meter`, for Home Assistant **2026.11 or newer**,
+> and the Android Meter app in `android`, for **Android 9 or newer**.
+
+## Highlights
+
+- **Learnt from your meter.** Type the reading the first picture shows, and
+  the digits it holds are learnt. The others are learnt on their own as the
+  meter turns, and typing a reading again later speeds that up.
+- **Never ahead of the meter.** A reading is chosen among the values the
+  meter can have reached since the last picture, at most the largest flow it
+  is built for. Of the values that fit equally well, the lowest is taken, so
+  a doubt delays the reading but never pushes it past the real one.
+- **Turning drums left out.** A drum caught between two digits, a blank one
+  or one unlike any known digit plays no part in the reading.
+- **Wrong readings show up.** A picture whose drums show a value the meter
+  cannot have reached, lower than the reading for instance, is refused and
+  the status says so.
+- **The phone is only a camera.** The app takes the picture, posts it, and
+  waits for the interval the answer gives it: every setting lives in Home
+  Assistant.
+- **Local only.** The webhook only takes requests from your network, and
+  the app has no dependency beyond Android itself.
 
 ## How it works
 
@@ -22,24 +88,16 @@ Two parts live in this repository:
 2. The integration turns the picture upright, crops the counter, cuts it
    into one window per drum, and turns each window into a small black and
    white mask of its digit.
-3. A drum at rest is compared with the masks learnt for each digit. A drum
-   caught between two digits, a blank one or one that looks like no known
-   digit is left out.
-4. The reading is not taken drum by drum but chosen among the values the
-   meter can have reached since the last frame, at most the largest flow
-   the meter is built for. Of the values that fit the frame equally well,
-   the lowest is taken. A doubt therefore delays the reading, it never puts
-   it ahead of the meter.
-5. The same choice labels new masks. After the first reading is typed in,
-   the digits the meter shows as it turns are learnt on their own.
+3. A drum at rest is compared with the masks learnt for each digit.
+4. The reading is chosen among the values the meter can have reached since
+   the last picture, and the lowest of the most likely ones is kept.
+5. The same choice labels new masks: once the meter can only show one digit
+   on a drum, or only one value fits, what the drum shows is learnt as that
+   digit.
 
-A frame that shows a value the meter cannot have reached, for instance
-lower than the reading, is refused and the status says so. That is how a
-wrong reading shows up: type the right one in the options.
+## Installing
 
-## Installation
-
-### Integration
+### The integration
 
 Search for **Android Meter** in Settings > Marketplace (or HACS) and
 install it. If it is not listed, add this repository as a custom
@@ -49,7 +107,7 @@ integration repository first:
 To install by hand, unpack `android_meter.zip` from the latest release into
 `config/custom_components/android_meter/` and restart Home Assistant.
 
-### App
+### The app
 
 Build it with `./gradlew assembleRelease` in `android/` (JDK 21, Android
 SDK platform 37), or take the APK from the Android workflow's artifacts,
@@ -82,10 +140,8 @@ and install it on the phone.
    shows, for example `00123.456`, and save. The status turns to OK.
 6. **Start** the app. It keeps going with the screen off.
 
-Typing a reading again, a few hours later, teaches the digits the first
-picture did not show and gets the reading going faster. The **Learnt
-digits** sensor says how many of the ten are known; the options list which
-ones are still missing.
+The **Learnt digits** sensor says how many of the ten are known; the
+options list which ones are still missing.
 
 ## Options
 
@@ -104,7 +160,7 @@ ones are still missing.
 Changing the rotation, crop, gap or number of drums forgets the digits
 learnt, since they no longer match the windows; type the reading again.
 
-## Entities
+## What you get
 
 | Entity | Description |
 |---|---|
@@ -134,16 +190,19 @@ learnt, since they no longer match the windows; type the reading again.
 - A reading typed lower than the current one is a correction. Home
   Assistant counts the difference as negative consumption and logs once
   that the sensor is not strictly increasing.
-- The webhook only accepts requests from the local network. Its address
-  holds the webhook's secret: the app never sends it anywhere else, does
-  not follow redirects, and keeps it out of Android backups.
-- Download the integration's diagnostics (device page, three dots menu)
-  when reporting a problem. They hold the options, the status, the reading
-  and how many masks each digit has, never the webhook address or the
-  pictures.
+- The webhook address holds the webhook's secret: the app never sends it
+  anywhere else, does not follow redirects, and keeps it out of Android
+  backups.
 - The recognition was developed and tested on synthetic pictures of a drum
   counter, rolling drums, carries, uneven light and noise included. Real
   meters differ; reports with the Frame image are welcome.
+
+## Reporting a problem
+
+Download the integration's diagnostics (device page, three dots menu) and
+attach them with a Frame image. They hold the options, the status, the
+reading and how many masks each digit has, never the webhook address or the
+pictures.
 
 ## Development
 
@@ -156,7 +215,8 @@ pytest
 
 The tests use `pytest-homeassistant`, the test package Home Assistant
 publishes with each release, at the version of `homeassistant` pinned in
-`requirements-dev.txt`. `tests/synth.py` draws the synthetic meter.
+`requirements-dev.txt`. `tests/synth.py` draws the synthetic meter, and
+`tests/test_simulation.py` runs hours of a meter in use through the reader.
 
 ## License
 
