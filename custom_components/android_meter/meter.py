@@ -465,38 +465,48 @@ class Meter:
         cannot undo it.
         """
         async with self._lock:
-            settings = Settings.from_options(options)
-            fresh = forget or settings.shape() != self.settings.shape()
-            patches = recognizer.Patches() if fresh else self.patches
-            if reading is not None:
-                if settings.geometry is None:
-                    raise TeachError("no_crop")
-                if picture is None:
-                    raise TeachError("no_frame")
-                value = _units(reading, settings.decimals, ROUND_FLOOR)
-                learnt = await self.hass.async_add_executor_job(
-                    self._teach, picture[0], settings.geometry, value, patches
-                )
-                if learnt < 0:
-                    raise TeachError("crop_outside")
-                if learnt == 0:
-                    raise TeachError("nothing_at_rest")
-            self.options = {**DEFAULTS, **options}
-            self.settings = settings
-            self.patches = patches
-            if reading is not None and picture is not None:
-                self.reading = reading
-                self.ceiling = reading
-                self.read_at = picture[1]
-                self.status = STATUS_OK
-                self.last = None
-                self.locked = True
-            elif fresh:
-                self.status = STATUS_UNTAUGHT if settings.geometry is not None else STATUS_NO_CROP
-                self.last = None
-            self._save()
-            self._arm_silence()
+            await self._configure(options, reading, forget, picture)
         self._notify()
+
+    async def _configure(
+        self,
+        options: Mapping[str, Any],
+        reading: Decimal | None,
+        forget: bool,
+        picture: tuple[bytes, datetime] | None,
+    ) -> None:
+        """What async_configure does, under the lock."""
+        settings = Settings.from_options(options)
+        fresh = forget or settings.shape() != self.settings.shape()
+        patches = recognizer.Patches() if fresh else self.patches
+        if reading is not None:
+            if settings.geometry is None:
+                raise TeachError("no_crop")
+            if picture is None:
+                raise TeachError("no_frame")
+            value = _units(reading, settings.decimals, ROUND_FLOOR)
+            learnt = await self.hass.async_add_executor_job(
+                self._teach, picture[0], settings.geometry, value, patches
+            )
+            if learnt < 0:
+                raise TeachError("crop_outside")
+            if learnt == 0:
+                raise TeachError("nothing_at_rest")
+        self.options = {**DEFAULTS, **options}
+        self.settings = settings
+        self.patches = patches
+        if reading is not None and picture is not None:
+            self.reading = reading
+            self.ceiling = reading
+            self.read_at = picture[1]
+            self.status = STATUS_OK
+            self.last = None
+            self.locked = True
+        elif fresh:
+            self.status = STATUS_UNTAUGHT if settings.geometry is not None else STATUS_NO_CROP
+            self.last = None
+        self._save()
+        self._arm_silence()
 
     async def async_change(self, changes: Mapping[str, Any]) -> str | None:
         """Apply option changes from the device page or the phone.
@@ -506,23 +516,30 @@ class Meter:
         the picture without giving a crop clears the crop, which is
         measured on the turned picture. What is applied is stored in the
         entry's options too. Returns the error, or None.
+
+        The lock is held from the first look at the options on, so that a
+        reading being taught, or another change, is waited for.
         """
-        given = set(changes)
-        changed = {key: value for key, value in changes.items() if self.options.get(key) != value}
-        if not changed:
-            return None
-        if self.locked and any(key in LOCKED for key in changed):
-            return "crop_locked"
-        if CONF_ROTATION in changed and not given & set(CROP_BOX):
-            changed.update(dict.fromkeys(CROP_BOX, 0))
-        options = {**self.options, **changed}
-        error = frame_error(Settings.from_options(options), self.frame_size)
-        if error is not None:
-            return error
-        await self.async_configure(options)
-        entry = self.hass.config_entries.async_get_entry(self.entry_id)
-        if entry is not None:
-            self.hass.config_entries.async_update_entry(entry, options=options)
+        async with self._lock:
+            given = set(changes)
+            changed = {
+                key: value for key, value in changes.items() if self.options.get(key) != value
+            }
+            if not changed:
+                return None
+            if self.locked and any(key in LOCKED for key in changed):
+                return "crop_locked"
+            if CONF_ROTATION in changed and not given & set(CROP_BOX):
+                changed.update(dict.fromkeys(CROP_BOX, 0))
+            options = {**self.options, **changed}
+            error = frame_error(Settings.from_options(options), self.frame_size)
+            if error is not None:
+                return error
+            await self._configure(options, None, False, None)
+            entry = self.hass.config_entries.async_get_entry(self.entry_id)
+            if entry is not None:
+                self.hass.config_entries.async_update_entry(entry, options=options)
+        self._notify()
         return None
 
     async def async_find_crop(self) -> str | None:

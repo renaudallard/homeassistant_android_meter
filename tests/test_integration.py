@@ -27,8 +27,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import random
+import threading
 from datetime import timedelta
+from decimal import Decimal
 from http import HTTPStatus
 from typing import Any
 from unittest.mock import patch
@@ -421,6 +424,39 @@ async def test_the_picture_shown_is_taught(
     response = await _post(client, entry, synth.frame(1234571, LAYOUT, rng, light=0.9, shade=0))
     assert (await response.json())["status"] == "ok"
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.571"
+
+
+async def test_a_crop_change_waits_for_a_reading_being_taught(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """A crop sent while a reading is taught is refused by the lock that
+    reading sets, rather than forgetting the digits just learnt."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    await _post(client, entry, synth.frame(1234567, LAYOUT, random.Random(12), light=0.9, shade=0))
+    await _options(hass, entry, **CROP)
+    meter = entry.runtime_data
+    release = threading.Event()
+    teach = meter._teach
+
+    def slow(*args: Any) -> int:
+        release.wait(10)
+        return teach(*args)
+
+    with patch.object(meter, "_teach", slow):
+        taught = hass.async_create_task(
+            meter.async_configure(meter.options, Decimal("1234.567"), picture=meter.picture())
+        )
+        while not meter._lock.locked():
+            await asyncio.sleep(0)
+        change = hass.async_create_task(meter.async_change({"x": CROP["x"] + 1}))
+        for _ in range(5):
+            await asyncio.sleep(0)
+        release.set()
+        await taught
+        assert await change == "crop_locked"
+    assert entry.options["x"] == CROP["x"]
+    assert any(meter.patches.counts())
 
 
 async def test_a_reading_is_asked_in_repairs(
