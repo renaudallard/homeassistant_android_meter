@@ -36,6 +36,9 @@ import android.graphics.RectF
 import android.view.MotionEvent
 import android.view.View
 
+/* The smallest side the box can be dragged to, in pixels of the picture. */
+const val LEAST_SIDE = 8f
+
 /**
  * The picture with the crop over it: a box moved by dragging its middle and
  * resized by dragging a corner, with each drum window drawn inside it. The
@@ -134,7 +137,7 @@ class CropView(context: Context, private val picture: Picture) : View(context) {
     }
 
     private fun drag(dx: Float, dy: Float) {
-        val least = 8f
+        val least = LEAST_SIDE
         val w = picture.width.toFloat()
         val h = picture.height.toFloat()
         when (grip) {

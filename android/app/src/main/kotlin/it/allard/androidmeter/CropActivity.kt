@@ -113,19 +113,24 @@ class CropActivity : Activity() {
         }
     }
 
-    /* Takes a crop reported by Home Assistant, if it is one for this picture. */
+    /*
+     * Takes a crop reported by Home Assistant, if it is one for this picture.
+     * One measured on another picture, from another camera say, may not fit
+     * this one, and a box outside it could not be dragged back.
+     */
     private fun apply(json: String?, w: Float, h: Float): Boolean {
         val known = try {
             json?.let { JSONObject(it) }
         } catch (e: JSONException) {
             null
         } ?: return false
-        val width = known.optInt("width")
-        val height = known.optInt("height")
-        if (width <= 0 || height <= 0 || known.optInt("rotation") != 0) return false
         val x = known.optInt("x").toFloat()
         val y = known.optInt("y").toFloat()
-        view.box.set(x, y, minOf(w, x + width), minOf(h, y + height))
+        val width = known.optInt("width").toFloat()
+        val height = known.optInt("height").toFloat()
+        if (known.optInt("rotation") != 0 || width < LEAST_SIDE || height < LEAST_SIDE) return false
+        if (x < 0 || y < 0 || x + width > w || y + height > h) return false
+        view.box.set(x, y, x + width, y + height)
         view.digits = known.optInt("digits", 8).coerceIn(1, 12)
         decimals = known.optInt("decimals", 3).coerceIn(0, view.digits)
         view.gap = known.optInt("gap").toFloat()
