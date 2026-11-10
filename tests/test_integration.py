@@ -332,12 +332,19 @@ async def test_options_errors(hass: HomeAssistant, hass_client_no_auth: Any) -> 
 async def test_the_phone_goes_offline(
     hass: HomeAssistant, hass_client_no_auth: Any, freezer: FrozenDateTimeFactory
 ) -> None:
+    """Five minutes after the last frame, a change of crop in between
+    neither putting it off nor hiding it."""
     entry = await _entry(hass)
     client = await hass_client_no_auth()
     await _post(client, entry, synth.frame(1234567, LAYOUT, random.Random(3)))
-    freezer.tick(timedelta(seconds=301))
+    freezer.tick(timedelta(seconds=200))
+    await _crop(hass, **CROP)
+    assert hass.states.get("sensor.gas_meter_status").state == "untaught"
+    freezer.tick(timedelta(seconds=101))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
+    assert hass.states.get("sensor.gas_meter_status").state == "offline"
+    await _crop(hass, x=CROP["x"] + 1)
     assert hass.states.get("sensor.gas_meter_status").state == "offline"
 
 
@@ -383,7 +390,8 @@ async def test_the_reading_survives_a_restart_and_removal_cleans_up(
     )
     await _options(hass, entry, **{**CROP, "x": CROP["x"] + 1})
     assert hass.states.get("sensor.gas_meter_learnt_digits").state == "0"
-    assert hass.states.get("sensor.gas_meter_status").state == "untaught"
+    # No frame since the restart: the phone is still waited for.
+    assert hass.states.get("sensor.gas_meter_status").state == "waiting"
 
     assert await hass.config_entries.async_remove(entry.entry_id)
     await hass.async_block_till_done()

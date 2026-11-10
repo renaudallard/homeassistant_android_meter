@@ -276,6 +276,8 @@ class Meter:
         self.last: recognizer.Read | None = None
         self._listeners: list[CALLBACK_TYPE] = []
         self._silence: CALLBACK_TYPE | None = None
+        # When the phone last sent a frame, or when the meter started.
+        self._heard = dt_util.utcnow()
 
     async def async_load(self) -> None:
         data = await self._store.async_load()
@@ -359,10 +361,16 @@ class Meter:
 
     @callback
     def _arm_silence(self) -> None:
+        """Mark the phone offline once it has been silent too long, counted
+        from the last frame it sent."""
         if self._silence is not None:
             self._silence()
+            self._silence = None
+        if self.status == STATUS_OFFLINE:
+            return
         delay = max(SILENCE_INTERVALS * self.settings.interval, SILENCE_FLOOR)
-        self._silence = async_call_later(self.hass, delay, self._silent)
+        left = delay - (dt_util.utcnow() - self._heard).total_seconds()
+        self._silence = async_call_later(self.hass, max(0.0, left), self._silent)
 
     @callback
     def _silent(self, _now: datetime) -> None:
@@ -417,6 +425,7 @@ class Meter:
         """Take a frame from the phone."""
         async with self._lock:
             now = dt_util.utcnow()
+            self._heard = now
             size, status, read = await self.hass.async_add_executor_job(
                 self._read, data, self.settings.geometry, self._bounds(now)
             )
@@ -497,11 +506,14 @@ class Meter:
         self.options = {**DEFAULTS, **options}
         self.settings = settings
         self.patches = patches
+        # Only a frame ends the wait for the phone.
+        silent = self.status in (STATUS_OFFLINE, STATUS_WAITING)
         if reading is not None and picture is not None:
             self.reading = reading
             self.ceiling = reading
             self.read_at = picture[1]
-            self.status = STATUS_OK
+            if not silent:
+                self.status = STATUS_OK
             self.last = None
             self.locked = True
         elif fresh or rescaled:
@@ -509,7 +521,8 @@ class Meter:
                 self.reading = None
                 self.ceiling = None
                 self.read_at = None
-            self.status = STATUS_UNTAUGHT if settings.geometry is not None else STATUS_NO_CROP
+            if not silent:
+                self.status = STATUS_UNTAUGHT if settings.geometry is not None else STATUS_NO_CROP
             self.last = None
         self._save()
         self._arm_silence()
