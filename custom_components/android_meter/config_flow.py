@@ -29,7 +29,8 @@ Setting up only names the meter and hands out the webhook address the app
 needs, as a QR code the phone's camera reads and shares to the app, and
 as text. Everything else lives in the options, a menu set once a frame has
 come in: the reading to teach, and the phone. The crop and the counter
-are set with controls on the device page, next to the Frame image.
+are set on the phone, or with controls on the device page next to the
+Frame image.
 """
 
 from __future__ import annotations
@@ -145,7 +146,7 @@ class AndroidMeterConfigFlow(ConfigFlow, domain=DOMAIN):
 
 class AndroidMeterOptionsFlow(OptionsFlow):
     """A menu: teach the reading, or the phone and pairing. The crop and
-    the counter are controls on the device page."""
+    the counter are set on the phone or on the device page."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         return self.async_show_menu(step_id="init", menu_options=["teach", "phone"])
