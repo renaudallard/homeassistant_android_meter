@@ -269,9 +269,13 @@ cost of the year and of the month.
   After a reboot, an update of the app, or Android stopping it, the app
   therefore cannot start again on its own: it posts **The meter watch
   stopped**, and a tap on that notification starts it again.
-- A reading typed lower than the current one is a correction. Home
-  Assistant counts the difference as negative consumption and logs once
-  that the sensor is not strictly increasing.
+- A reading typed lower than the current one is a correction. Up to 10%
+  lower, Home Assistant counts the difference as negative consumption and
+  logs once that the sensor is not strictly increasing. More than 10%
+  lower, it takes the meter for one that was reset, and counts the whole
+  new reading as consumption: a slip of the decimal point corrected that
+  way shows as a spike in the Energy dashboard, to be taken out with
+  **Adjust sum** in Settings > Tools > Statistics.
 - The webhook address holds the webhook's secret: the app never sends it
   anywhere else, does not follow redirects, and keeps it out of Android
   backups.
