@@ -379,6 +379,12 @@ class Meter:
         low = _units(self.reading, decimals, ROUND_FLOOR)
         return low, _units(self.ceiling, decimals, ROUND_CEILING) + run + 1
 
+    def picture(self) -> tuple[bytes, datetime] | None:
+        """The last frame and when it came, as a teaching screen shows it."""
+        if self.frame is None or self.frame_at is None:
+            return None
+        return self.frame, self.frame_at
+
     def known(self) -> list[int]:
         """The digits learnt so far."""
         return [digit for digit, count in enumerate(self.patches.counts()) if count]
@@ -434,7 +440,7 @@ class Meter:
     def _teach(
         self, data: bytes, geometry: recognizer.Geometry, value: int, into: recognizer.Patches
     ) -> int:
-        """Learn the last frame as value. Runs in an executor, under the lock."""
+        """Learn a frame as value. Runs in an executor, under the lock."""
         try:
             frame = recognizer.open_frame(data, geometry.rotation)
             cells = recognizer.cut(frame, geometry)
@@ -447,12 +453,16 @@ class Meter:
         options: Mapping[str, Any],
         reading: Decimal | None = None,
         forget: bool = False,
+        picture: tuple[bytes, datetime] | None = None,
     ) -> None:
-        """Take new options, and maybe a reading of the last frame to learn.
+        """Take new options, and maybe the reading picture shows, to learn.
 
-        Changing the crop, or asking to forget, drops what was learnt.
-        Nothing changes when the reading cannot be taught. A reading taught
-        locks the crop, so that a slip on the device page cannot undo it.
+        picture is the frame the reading was read from, as picture() gave
+        it when the screen was drawn: frames that came in since show other
+        drums. Changing the crop, or asking to forget, drops what was
+        learnt. Nothing changes when the reading cannot be taught. A
+        reading taught locks the crop, so that a slip on the device page
+        cannot undo it.
         """
         async with self._lock:
             settings = Settings.from_options(options)
@@ -461,11 +471,11 @@ class Meter:
             if reading is not None:
                 if settings.geometry is None:
                     raise TeachError("no_crop")
-                if self.frame is None:
+                if picture is None:
                     raise TeachError("no_frame")
                 value = _units(reading, settings.decimals, ROUND_FLOOR)
                 learnt = await self.hass.async_add_executor_job(
-                    self._teach, self.frame, settings.geometry, value, patches
+                    self._teach, picture[0], settings.geometry, value, patches
                 )
                 if learnt < 0:
                     raise TeachError("crop_outside")
@@ -474,10 +484,10 @@ class Meter:
             self.options = {**DEFAULTS, **options}
             self.settings = settings
             self.patches = patches
-            if reading is not None:
+            if reading is not None and picture is not None:
                 self.reading = reading
                 self.ceiling = reading
-                self.read_at = self.frame_at
+                self.read_at = picture[1]
                 self.status = STATUS_OK
                 self.last = None
                 self.locked = True

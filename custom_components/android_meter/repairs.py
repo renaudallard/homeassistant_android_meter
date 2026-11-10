@@ -31,6 +31,7 @@ digits learnt, and the reading to type.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.repairs import RepairsFlow, RepairsFlowResult
@@ -47,6 +48,7 @@ class TeachFlow(RepairsFlow):
 
     def __init__(self, entry: MeterConfigEntry) -> None:
         self._entry = entry
+        self._picture: tuple[bytes, datetime] | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> RepairsFlowResult:
         entry = self._entry
@@ -55,9 +57,12 @@ class TeachFlow(RepairsFlow):
         meter = entry.runtime_data
         errors: dict[str, str] = {}
         if user_input is not None:
-            errors = await async_teach(meter, {**DEFAULTS, **entry.options}, user_input)
+            errors = await async_teach(
+                meter, {**DEFAULTS, **entry.options}, user_input, self._picture
+            )
             if not errors:
                 return self.async_create_entry(data={})
+        self._picture = meter.picture()
         return self.async_show_form(
             step_id="init",
             data_schema=teach_schema(),

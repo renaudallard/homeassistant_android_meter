@@ -27,11 +27,14 @@
 
 It shows the last picture as the Frame image draws it, with the drums
 outlined, which digits are learnt and which are still to learn, and asks
-for the reading the picture shows. The crop screen shows the same picture.
+for the reading the picture shows. The flow keeps the frame it showed, and
+the reading is taught from that one, not from a frame that came in while
+it was being typed.
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 import probatio
@@ -100,9 +103,13 @@ def counter_placeholders(meter: Meter) -> dict[str, str]:
 
 
 async def async_teach(
-    meter: Meter, options: dict[str, Any], user_input: dict[str, Any]
+    meter: Meter,
+    options: dict[str, Any],
+    user_input: dict[str, Any],
+    picture: tuple[bytes, datetime] | None,
 ) -> dict[str, str]:
-    """Teach the reading typed, or forget what was learnt. The errors, if any."""
+    """Teach the reading typed on picture, the frame the screen showed, or
+    forget what was learnt. The errors, if any."""
     text = str(user_input.get(CONF_READING) or "").strip()
     forget = bool(user_input.get(CONF_FORGET, False))
     if not text and not forget:
@@ -113,7 +120,7 @@ async def async_teach(
         if reading is None:
             return {CONF_READING: "bad_reading"}
     try:
-        await meter.async_configure(options, reading, forget)
+        await meter.async_configure(options, reading, forget, picture)
     except TeachError as err:
         return {"base": str(err)}
     return {}

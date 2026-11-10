@@ -35,6 +35,7 @@ Frame image.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from urllib.parse import quote
 
@@ -148,6 +149,9 @@ class AndroidMeterOptionsFlow(OptionsFlow):
     """A menu: teach the reading, or the phone and pairing. The crop and
     the counter are set on the phone or on the device page."""
 
+    def __init__(self) -> None:
+        self._picture: tuple[bytes, datetime] | None = None
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         return self.async_show_menu(step_id="init", menu_options=["teach", "phone"])
 
@@ -161,9 +165,10 @@ class AndroidMeterOptionsFlow(OptionsFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             options = self._current()
-            errors = await async_teach(meter, options, user_input)
+            errors = await async_teach(meter, options, user_input, self._picture)
             if not errors:
                 return self.async_create_entry(data=options)
+        self._picture = meter.picture()
         return self.async_show_form(
             step_id="teach",
             data_schema=teach_schema(),

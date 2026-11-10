@@ -396,6 +396,33 @@ async def test_the_teaching_screen_shows_the_picture(
     assert placeholders["unknown"] == "0 1 2 3 4 5 6 7 8 9"
 
 
+async def test_the_picture_shown_is_taught(
+    hass: HomeAssistant, hass_client_no_auth: Any, freezer: FrozenDateTimeFactory
+) -> None:
+    """A frame that comes in while the reading is typed is not the one
+    taught: the drums it shows have moved on."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    rng = random.Random(11)
+    await _post(client, entry, synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0))
+    shown_at = entry.runtime_data.frame_at
+    await _options(hass, entry, **CROP)
+    result = await _open(hass, entry, "teach")
+
+    freezer.tick(timedelta(seconds=60))
+    await _post(client, entry, synth.frame(1234571, LAYOUT, rng, light=0.9, shade=0))
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"reading": "01234.567"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.runtime_data.read_at == shown_at
+
+    freezer.tick(timedelta(seconds=60))
+    response = await _post(client, entry, synth.frame(1234571, LAYOUT, rng, light=0.9, shade=0))
+    assert (await response.json())["status"] == "ok"
+    assert hass.states.get("sensor.gas_meter_reading").state == "1234.571"
+
+
 async def test_a_reading_is_asked_in_repairs(
     hass: HomeAssistant, hass_client: Any, hass_client_no_auth: Any
 ) -> None:
