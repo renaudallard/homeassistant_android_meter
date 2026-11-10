@@ -237,6 +237,8 @@ def find(frame: Image.Image) -> dict[str, int] | None:
         "digits": row.windows,
         "decimals": decimals,
     }
-    if crop["x"] + crop["width"] > frame.width or crop["y"] + crop["height"] > frame.height:
-        return None
+    # The search picture's height is rounded, so a crop against the edge
+    # can pass it by a few pixels.
+    crop["width"] = min(crop["width"], frame.width - crop["x"])
+    crop["height"] = min(crop["height"], frame.height - crop["y"])
     return crop

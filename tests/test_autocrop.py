@@ -95,6 +95,19 @@ def test_the_synthetic_meter_is_found() -> None:
     assert crop["y"] <= layout.y + synth.WINDOW[1] / 2 <= crop["y"] + crop["height"]
 
 
+def test_a_counter_against_the_bottom_edge_is_found() -> None:
+    """The picture ends across the drums, at a height the search picture
+    rounds up: the crop stops at the edge."""
+    layout = synth.Layout()
+    data = synth.frame(1234567, layout, random.Random(3), light=0.9, shade=0, jitter=0)
+    for height in (241, 254):
+        frame = _frame(data).crop((0, 0, layout.frame[0], height))
+        crop = autocrop.find(frame)
+        assert crop is not None, height
+        assert crop["y"] + crop["height"] <= height
+        assert crop["digits"] == layout.digits
+
+
 def test_nothing_is_found_where_there_is_no_counter() -> None:
     blank = io.BytesIO()
     Image.new("RGB", (640, 480), (120, 120, 120)).save(blank, "JPEG")
