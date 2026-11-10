@@ -222,6 +222,34 @@ async def test_a_frame_is_read_once_taught(
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.590"
 
 
+async def test_a_crop_of_the_last_drums(
+    hass: HomeAssistant, hass_client_no_auth: Any, freezer: FrozenDateTimeFactory
+) -> None:
+    """The phone sees only the last six drums: the reading taught names
+    them all, and the two left of the crop follow it."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    rng = random.Random(9)
+    tail = {
+        **CROP,
+        "x": LAYOUT.x + 2 * (synth.WINDOW[0] + synth.GAP),
+        "width": 6 * synth.WINDOW[0] + 5 * synth.GAP,
+        "digits": 6,
+    }
+    await _post(client, entry, synth.frame(61890123, LAYOUT, rng, light=0.9, shade=0))
+    result = await _options(hass, entry, **tail, reading="61890.123")
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await _post(client, entry, synth.frame(61234567, LAYOUT, rng, light=0.9, shade=0))
+    result = await _options(hass, entry, reading="61234.567")
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert hass.states.get("sensor.gas_meter_reading").state == "61234.567"
+
+    freezer.tick(timedelta(seconds=60))
+    response = await _post(client, entry, synth.frame(61234590, LAYOUT, rng, light=0.9, shade=0))
+    assert (await response.json())["status"] == "ok"
+    assert hass.states.get("sensor.gas_meter_reading").state == "61234.590"
+
+
 async def test_the_webhook_refuses_what_is_not_a_frame(
     hass: HomeAssistant, hass_client_no_auth: Any
 ) -> None:
@@ -253,7 +281,7 @@ async def test_options_errors(hass: HomeAssistant, hass_client_no_auth: Any) -> 
     result = await _options(hass, entry, **{**CROP, "digits": 4, "decimals": 5})
     assert result["errors"] == {"base": "too_many_decimals"}
     assert entry.options["x"] == CROP["x"]
-    result = await _options(hass, entry, reading="123456.789")
+    result = await _options(hass, entry, reading="123.4567")
     assert result["errors"] == {"reading": "bad_reading"}
     # The drums were set to 4 above: the error says what this counter takes.
     assert result["description_placeholders"]["digits"] == "4"
@@ -422,7 +450,7 @@ async def test_the_device_controls(hass: HomeAssistant, hass_client_no_auth: Any
         await hass.services.async_call(
             "text",
             "set_value",
-            {"entity_id": "text.gas_meter_teach_the_reading", "value": "123456.789"},
+            {"entity_id": "text.gas_meter_teach_the_reading", "value": "1234.5678"},
             blocking=True,
         )
     assert err.value.translation_key == "bad_reading"

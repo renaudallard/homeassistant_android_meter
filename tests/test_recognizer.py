@@ -163,6 +163,39 @@ def test_nothing_is_learnt_from_an_unteachable_frame() -> None:
     assert not cells[-1].at_rest
 
 
+# The last six drums only, as a phone too close to see the whole counter.
+TAIL = r.Geometry(
+    0,
+    LAYOUT.x + 2 * (synth.WINDOW[0] + synth.GAP),
+    LAYOUT.y,
+    6 * synth.WINDOW[0] + 5 * synth.GAP,
+    LAYOUT.height,
+    6,
+    synth.GAP,
+)
+
+
+def _tail(volume: float, rng: random.Random) -> list[r.Cell]:
+    data = synth.frame(volume, LAYOUT, rng, light=0.9, shade=0, jitter=0)
+    return r.cut(r.open_frame(data, 0), TAIL)
+
+
+def test_a_crop_of_the_last_drums_carries_the_others() -> None:
+    """The reading goes on past the highest value the crop can show: the
+    drums left of it follow from the reading."""
+    rng = random.Random(8)
+    patches = r.Patches()
+    for value in (61234567, 61890123, 61999990):
+        assert r.learn_reading(_tail(value, rng), patches, value) > 0
+    result = r.read(_tail(62000005, rng), patches, 61999990, 62000100)
+    assert result.refused is None
+    assert result.value == 62000005
+    # A phone long offline: the drums alone decide, from the reading on.
+    result = r.read(_tail(62000005, rng), patches, 61999990, 61999990 + r.MAX_SPAN)
+    assert result.refused is None
+    assert result.value == 62000005
+
+
 def test_render_outlines_the_windows() -> None:
     rng = random.Random(7)
     data = synth.frame(1234567, LAYOUT, rng)

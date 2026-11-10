@@ -434,7 +434,9 @@ class Patches:
 
 
 def _figures(value: int, digits: int) -> list[int]:
-    return [ord(c) - 48 for c in str(value).zfill(digits)]
+    """What the last digits drums show for value. Drums further left, out
+    of the crop, follow from the reading."""
+    return [ord(c) - 48 for c in str(value % 10**digits).zfill(digits)]
 
 
 def _reachable(low: int, high: int, digits: int) -> list[set[int]]:
@@ -462,7 +464,9 @@ def read(cells: Sequence[Cell], patches: Patches, low: int, high: int) -> Read:
     """Read cells as a value from low to high, learning what they show.
 
     low is the last reading and high the ceiling of the last read plus what
-    the meter can have run since: the meter has to stand in between.
+    the meter can have run since: the meter has to stand in between. The
+    cells are the last drums of the meter, so a value is compared on its
+    last figures and the drums left of the crop follow from the reading.
 
     Only trusted cells weigh in the choice: a drum between two digits, a
     blank cell or one unlike any known digit says nothing, and every value
@@ -479,7 +483,6 @@ def read(cells: Sequence[Cell], patches: Patches, low: int, high: int) -> Read:
     and the play of the mount after a single reading was taught.
     """
     n = len(cells)
-    high = min(high, 10**n - 1)
     nearest: list[int | None] = [None] * n
     trusted: list[bool] = [False] * n
     at_rest = tuple(cell.at_rest for cell in cells)
@@ -532,8 +535,12 @@ def read(cells: Sequence[Cell], patches: Patches, low: int, high: int) -> Read:
     if high - low >= MAX_SPAN:
         if not all(trusted):
             return refuse("unreadable")
-        value = int("".join(str(digit) for digit in nearest))
-        if not low <= value <= high:
+        # The lowest value from low on that ends as the drums show.
+        shown = int("".join(str(digit) for digit in nearest))
+        value = low - low % 10**n + shown
+        if value < low:
+            value += 10**n
+        if value > high:
             return refuse("implausible")
         return Read(value, value, None, tuple(nearest), tuple(trusted), at_rest, 0)
 

@@ -148,7 +148,11 @@ Android SDK platform 37).
 
    A drum hidden by a glare between two others is counted all the same,
    but one hidden at either end, behind a seal wire or out of the picture,
-   is left out: the reading then has fewer drums, which is fine.
+   is left out of the crop. Drums left out on the right make the reading
+   coarser. Drums left out on the left cost nothing: they only turn when
+   the drum to their right goes from 9 to 0, so the reading carries them
+   on its own. A phone that cannot be set far enough back to see the whole
+   counter is best aimed at the last drums, red ones included.
 
    The meter's device page has the same settings as controls, next to the
    **Frame** image, for fine tuning: **Rotation**, **Crop left, top,
@@ -170,11 +174,11 @@ in, then goes on learning on its own as the meter turns.
 1. Open Configure > **Teach the reading**, or press **Fix** on the Repairs
    notice. The screen shows the last picture with each drum outlined. The
    **Teach the reading** box on the device page does the same.
-2. Type the reading the picture shows, every drum from left to right, for
-   example `01234.567`. A drum caught between two digits counts as the lower
-   one.
-3. Save. Every drum showing a whole digit is learnt, the status turns to
-   OK, and **Lock the crop** turns on.
+2. Type the meter's reading, every drum from left to right, for example
+   `01234.567`, drums left of the crop included. A drum caught between two
+   digits counts as the lower one.
+3. Save. Every drum of the crop showing a whole digit is learnt, the
+   status turns to OK, and **Lock the crop** turns on.
 
 The screen lists the digits learnt and the ones still to learn, and the
 **Learnt digits** sensor counts them. Teaching again later, when the meter
@@ -195,9 +199,9 @@ On the meter's device page:
 | Rotation | Clockwise turn that makes the digits upright. |
 | Crop left, top, width, height | The windows, in pixels of the turned picture. |
 | Gap between windows | Housing between two windows, in pixels. |
-| Drums, Decimal drums | How many drums, and how many after the decimal point. |
+| Drums, Decimal drums | How many drums the crop holds, and how many of them are after the decimal point. |
 | Lock the crop | On, the controls above and Find the counter refuse changes. Turns on when a reading is taught. |
-| Teach the reading | Type the reading the Frame image shows to teach it. |
+| Teach the reading | Type the meter's reading, as the Frame image shows it, to teach it. |
 | Forget the digits learnt | Start learning again. |
 | Find the counter | Find the row of drums on the last picture and set the crop around it. |
 
@@ -205,7 +209,7 @@ In Configure, a menu of two screens:
 
 | Screen | Options |
 |---|---|
-| Teach the reading | The reading the last picture shows, with the picture; Forget the digits learnt. |
+| Teach the reading | The meter's reading, with the last picture; Forget the digits learnt. |
 | Phone and pairing | The pairing QR code; interval (10 to 3600 s, 60 by default); torch; largest flow (6 m³/h for a G4, 10 for a G6). |
 
 ## What you get

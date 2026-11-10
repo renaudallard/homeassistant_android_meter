@@ -49,7 +49,7 @@ async def async_setup_entry(
 
 
 class TeachText(MeterEntity, TextEntity):
-    """Type the reading the Frame image shows to teach it.
+    """Type the meter's reading, as the Frame image shows it, to teach it.
 
     It always reads empty: what is typed is taught, not kept.
     """
