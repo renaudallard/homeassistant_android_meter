@@ -65,6 +65,7 @@ from .const import (
     CONF_WIDTH,
     CONF_X,
     CONF_Y,
+    DEFAULT_NAME,
     DEFAULTS,
     DOMAIN,
     MAX_DECIMALS,
@@ -360,6 +361,8 @@ class Meter:
         """Raise the Repairs notice asking for a reading, or clear it."""
         issue = teach_issue_id(self.entry_id)
         if self.untaught():
+            # Named, as there may be more than one meter.
+            entry = self.hass.config_entries.async_get_entry(self.entry_id)
             ir.async_create_issue(
                 self.hass,
                 DOMAIN,
@@ -367,6 +370,7 @@ class Meter:
                 is_fixable=True,
                 severity=ir.IssueSeverity.WARNING,
                 translation_key="teach",
+                translation_placeholders={"name": entry.title if entry else DEFAULT_NAME},
                 data={"entry_id": self.entry_id},
             )
         else:

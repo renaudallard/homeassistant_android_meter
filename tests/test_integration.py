@@ -610,7 +610,7 @@ async def test_a_reading_is_asked_in_repairs(
     issue = issues.async_get_issue(DOMAIN, issue_id)
     assert issue is not None
     assert issue.is_fixable
-    assert issue.translation_placeholders is None
+    assert issue.translation_placeholders == {"name": entry.title}
 
     client = await hass_client()
     flow = await start_repair_fix_flow(client, DOMAIN, issue_id)

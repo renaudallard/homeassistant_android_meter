@@ -166,7 +166,7 @@ Android SDK platform 37).
    drums**. Each change redraws the Frame image with every window
    outlined. Turning the picture starts the crop anew.
 6. **Teach the reading**, see below. Settings also shows a Repairs notice,
-   **Android Meter needs a reading**, until it is done.
+   **Gas meter needs a reading** (the meter's name), until it is done.
 7. **Start** the app. It keeps taking pictures with the screen off, as a
    foreground service with its notification showing. Press **Let it run
    without battery limits** once, so Android does not stop it to save
