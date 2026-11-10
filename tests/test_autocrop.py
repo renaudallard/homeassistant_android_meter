@@ -67,6 +67,7 @@ def test_a_counter_against_the_edge_is_found() -> None:
     assert crop is not None
     assert crop["x"] == 0
     assert crop["digits"] == 7
+    assert crop["decimals"] == 2
     geometry = r.Geometry(
         0, crop["x"], crop["y"], crop["width"], crop["height"], crop["digits"], crop["gap"]
     )

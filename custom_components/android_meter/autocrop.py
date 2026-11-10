@@ -56,6 +56,9 @@ SQUAT, SLENDER = 1.1, 7.0
 # Drum digits are spaced at least this many times the widest of them.
 NARROWEST = 1.5
 FEWEST = 3
+# A drum is red when this share of its step, window and gap, is red: its
+# window shows the dark drum, the red is around it.
+RED_SHARE = 0.15
 # The window around a digit, in digit heights and widths.
 WINDOW_HEIGHT = 1.6
 WINDOW_WIDTH = 1.3
@@ -176,6 +179,13 @@ def _row(shapes: list[Shape]) -> _Row | None:
     return best
 
 
+def _redness(box: Image.Image) -> float:
+    """The share of a box's pixels that are plainly red."""
+    red, green, blue = (band.tobytes() for band in box.split())
+    plain = sum(r > g + 40 and r > b + 40 for r, g, b in zip(red, green, blue, strict=True))
+    return plain / max(1, len(red))
+
+
 def find(frame: Image.Image) -> dict[str, int] | None:
     """The crop and counter of an upright RGB picture, or None.
 
@@ -209,14 +219,11 @@ def find(frame: Image.Image) -> dict[str, int] | None:
         return None
     left = first - window / 2
     top = level - tall / 2
-    # A red drum shows its colour around the window, the drum itself being
-    # dark: the whole step is weighed, window and gap.
     decimals = 0
     for i in reversed(range(row.windows)):
         start = row.shapes[0].middle + (i - 0.5) * row.pitch
         box = small.crop((round(start), round(top), round(start + row.pitch), round(top + tall)))
-        red, green, blue = (statistics.median(band.tobytes()) for band in box.split())
-        if not (red > green + 40 and red > blue + 40):
+        if _redness(box) < RED_SHARE:
             break
         decimals += 1
     width = (row.windows - 1) * row.pitch + window
