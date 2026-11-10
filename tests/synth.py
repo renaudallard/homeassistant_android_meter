@@ -77,6 +77,24 @@ class Layout:
 
 
 _STRIPS: dict[tuple[int, int, int], Image.Image] = {}
+_NOISE: dict[tuple[int, int], list[Image.Image]] = {}
+
+
+def _noise(size: tuple[int, int], rng: random.Random) -> Image.Image:
+    """Sensor noise, sigma 7 around 128, picked by rng among a few frames
+    drawn once from a fixed seed: Image.effect_noise has a random source of
+    its own, which made the frames differ from one run to the next."""
+    frames = _NOISE.get(size)
+    if frames is None:
+        fixed = random.Random(0)
+        count = size[0] * size[1]
+        frames = []
+        for _ in range(4):
+            levels = bytes(min(255, max(0, round(fixed.gauss(128, 7)))) for _ in range(count))
+            frames.append(Image.frombytes("L", size, levels).convert("RGB"))
+        _NOISE[size] = frames
+    frame = frames[rng.randrange(len(frames))]
+    return frame.transpose(Image.Transpose.ROTATE_180) if rng.random() < 0.5 else frame
 
 
 def _strip(background: tuple[int, int, int]) -> Image.Image:
@@ -135,7 +153,7 @@ def frame(
     ramp = Image.linear_gradient("L").resize((width, height)).rotate(turn)
     ramp = ramp.point(lambda p: round(level * (200 + p * 55 / 255)))
     image = ImageChops.multiply(image, Image.merge("RGB", (ramp, ramp, ramp)))
-    noise = Image.effect_noise((width, height), 7).convert("RGB")
+    noise = _noise((width, height), rng)
     image = ImageChops.add(image, noise, 1.0, -128)
     out = io.BytesIO()
     image.save(out, "JPEG", quality=80)
