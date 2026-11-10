@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import io
 import random
+import struct
 from pathlib import Path
 
 import pytest
@@ -216,6 +217,19 @@ def test_the_exif_orientation_is_followed() -> None:
     image.save(jpeg, "JPEG", exif=exif.tobytes())
     assert r.open_frame(jpeg.getvalue(), 0).size == (20, 40)
     assert r.open_frame(jpeg.getvalue(), 90).size == (40, 20)
+
+
+def test_a_damaged_exif_block_is_not_fatal() -> None:
+    """A tag of the wrong type, text where a number belongs: Pillow reads
+    it but cannot write it back."""
+    ifd = struct.pack("<H", 2)
+    ifd += struct.pack("<HHIHH", 0x0112, 3, 1, 6, 0)  # orientation 6
+    ifd += struct.pack("<HHI", 0x011A, 2, 4) + b"abc\0"  # XResolution as text
+    ifd += struct.pack("<I", 0)
+    exif = b"Exif\0\0II*\0" + struct.pack("<I", 8) + ifd
+    jpeg = io.BytesIO()
+    Image.new("RGB", (40, 20)).save(jpeg, "JPEG", exif=exif)
+    assert r.open_frame(jpeg.getvalue(), 0).size == (20, 40)
 
 
 def _actaris() -> list[r.Cell]:

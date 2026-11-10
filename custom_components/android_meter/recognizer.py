@@ -47,7 +47,7 @@ import io
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps, ImageStat
+from PIL import ExifTags, Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps, ImageStat
 
 # A mask is a Python int of CELL_W * CELL_H bits, the top left pixel
 # highest, row after row.
@@ -60,6 +60,18 @@ _LAST_COLUMN = sum(1 << (_BITS - CELL_W - y * CELL_W) for y in range(CELL_H))
 
 # A frame with more pixels than this is refused before it is decoded.
 MAX_PIXELS = 40_000_000
+
+# How to turn a picture upright for each EXIF orientation. The others, 1
+# and anything unknown, leave it as it is.
+_UPRIGHT = {
+    2: Image.Transpose.FLIP_LEFT_RIGHT,
+    3: Image.Transpose.ROTATE_180,
+    4: Image.Transpose.FLIP_TOP_BOTTOM,
+    5: Image.Transpose.TRANSPOSE,
+    6: Image.Transpose.ROTATE_270,
+    7: Image.Transpose.TRANSVERSE,
+    8: Image.Transpose.ROTATE_90,
+}
 
 # A distance is the share of ink two masks do not have in common, in
 # percent. A cell at rest at most MATCH away from its nearest known digit is
@@ -181,10 +193,16 @@ def open_frame(data: bytes, rotation: int, mode: str = "L") -> Image.Image:
         with Image.open(io.BytesIO(data), formats=["JPEG"]) as image:
             if image.width * image.height > MAX_PIXELS:
                 raise FrameError("frame too large")
-            # Some phones tag the turn instead of turning the pixels.
-            frame = ImageOps.exif_transpose(image).convert(mode)
+            # Some phones tag the turn instead of turning the pixels. The
+            # tag is only read: writing a damaged EXIF block back, as
+            # ImageOps.exif_transpose does, can fail with any error.
+            orientation = image.getexif().get(ExifTags.Base.Orientation)
+            frame = image.convert(mode)
     except (OSError, SyntaxError, ValueError, Image.DecompressionBombError) as err:
         raise FrameError("not a readable JPEG") from err
+    method = _UPRIGHT.get(orientation) if isinstance(orientation, int) else None
+    if method is not None:
+        frame = frame.transpose(method)
     return _turn(frame, rotation)
 
 
