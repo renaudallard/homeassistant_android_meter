@@ -27,9 +27,9 @@
 
 Setting up only names the meter and hands out the webhook address the app
 needs, as a QR code the phone's camera reads and shares to the app, and
-as text. Everything else lives in the options, set once a frame has come in
-and can be looked at: the crop, the counter, and the reading to learn
-from.
+as text. Everything else lives in the options, a menu set once a frame has
+come in and can be looked at: the reading to teach, the crop and counter,
+and the phone.
 """
 
 from __future__ import annotations
@@ -53,20 +53,17 @@ from homeassistant.helpers.selector import (
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
-    TextSelector,
 )
 
 from . import MeterConfigEntry
 from .const import (
     CONF_DECIMALS,
     CONF_DIGITS,
-    CONF_FORGET,
     CONF_GAP,
     CONF_HEIGHT,
     CONF_INTERVAL,
     CONF_MAX_FLOW,
     CONF_QR_CODE,
-    CONF_READING,
     CONF_ROTATION,
     CONF_TORCH,
     CONF_WEBHOOK_ID,
@@ -82,10 +79,11 @@ from .const import (
     MIN_INTERVAL,
     ROTATIONS,
 )
-from .meter import Settings, TeachError, frame_error, parse_reading
+from .meter import Settings, frame_error
+from .teach import async_teach, teach_placeholders, teach_schema
 
-_INTEGERS = (
-    CONF_INTERVAL,
+# The fields of the crop and counter form, all whole numbers.
+_COUNTER = (
     CONF_ROTATION,
     CONF_X,
     CONF_Y,
@@ -173,50 +171,50 @@ class AndroidMeterConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class AndroidMeterOptionsFlow(OptionsFlow):
-    """Crop, counter, and the reading to learn from."""
+    """A menu: teach the reading, set the crop and counter, or the phone."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        return self.async_show_menu(step_id="init", menu_options=["teach", "counter", "phone"])
+
+    def _current(self) -> dict[str, Any]:
+        return {**DEFAULTS, **self.config_entry.options}
+
+    async def async_step_teach(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """The last picture, and the reading it shows."""
         entry: MeterConfigEntry = self.config_entry
         meter = entry.runtime_data
         errors: dict[str, str] = {}
-        current: dict[str, Any] = {**DEFAULTS, **entry.options}
         if user_input is not None:
-            options = {key: user_input[key] for key in DEFAULTS}
-            for key in _INTEGERS:
-                options[key] = int(options[key])
-            options[CONF_MAX_FLOW] = float(options[CONF_MAX_FLOW])
-            options[CONF_TORCH] = bool(options[CONF_TORCH])
-            settings = Settings.from_options(options)
-            error = frame_error(settings, meter.frame_size)
-            reading = None
-            text = str(user_input.get(CONF_READING) or "").strip()
-            if error is not None:
-                errors["base"] = error
-            elif text:
-                reading = parse_reading(text, settings)
-                if reading is None:
-                    errors[CONF_READING] = "bad_reading"
+            options = self._current()
+            errors = await async_teach(meter, options, user_input)
             if not errors:
-                try:
-                    await meter.async_configure(
-                        options, reading, bool(user_input.get(CONF_FORGET, False))
-                    )
-                except TeachError as err:
-                    errors["base"] = str(err)
-                else:
-                    return self.async_create_entry(data=options)
-            current = {**current, **options}
+                return self.async_create_entry(data=options)
+        return self.async_show_form(
+            step_id="teach",
+            data_schema=teach_schema(),
+            errors=errors,
+            description_placeholders=teach_placeholders(self.hass, entry.entry_id, meter),
+        )
 
+    async def async_step_counter(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Where the drums are in the picture, and how many."""
+        entry: MeterConfigEntry = self.config_entry
+        meter = entry.runtime_data
+        errors: dict[str, str] = {}
+        current = self._current()
+        if user_input is not None:
+            options = {**current, **{key: int(user_input[key]) for key in _COUNTER}}
+            error = frame_error(Settings.from_options(options), meter.frame_size)
+            if error is None:
+                await meter.async_configure(options)
+                return self.async_create_entry(data=options)
+            errors["base"] = error
+            current = options
         size = meter.frame_size
-        known = meter.known()
-        url = _webhook_url(self.hass, entry.data[CONF_WEBHOOK_ID])
         schema = probatio.Schema(
             {
-                **_pairing(url),
-                probatio.Required(CONF_INTERVAL, default=current[CONF_INTERVAL]): _number(
-                    MIN_INTERVAL, MAX_INTERVAL, unit="s"
-                ),
-                probatio.Required(CONF_TORCH, default=current[CONF_TORCH]): BooleanSelector(),
                 probatio.Required(
                     CONF_ROTATION, default=str(current[CONF_ROTATION])
                 ): SelectSelector(
@@ -241,21 +239,45 @@ class AndroidMeterOptionsFlow(OptionsFlow):
                 probatio.Required(CONF_DECIMALS, default=current[CONF_DECIMALS]): _number(
                     0, MAX_DECIMALS
                 ),
-                probatio.Required(CONF_MAX_FLOW, default=current[CONF_MAX_FLOW]): _number(
-                    0.1, 100, 0.1, "m³/h"
-                ),
-                probatio.Optional(CONF_READING): TextSelector(),
-                probatio.Optional(CONF_FORGET, default=False): BooleanSelector(),
             }
         )
         return self.async_show_form(
-            step_id="init",
+            step_id="counter",
             data_schema=schema,
             errors=errors,
             description_placeholders={
-                "webhook_url": url,
                 "frame": "-" if size is None else f"{size[0]} x {size[1]}",
-                "known": " ".join(str(d) for d in known) or "-",
-                "unknown": " ".join(str(d) for d in range(10) if d not in known) or "-",
             },
+        )
+
+    async def async_step_phone(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """How often the phone takes a picture, the torch, and pairing."""
+        entry: MeterConfigEntry = self.config_entry
+        current = self._current()
+        if user_input is not None:
+            options = {
+                **current,
+                CONF_INTERVAL: int(user_input[CONF_INTERVAL]),
+                CONF_TORCH: bool(user_input[CONF_TORCH]),
+                CONF_MAX_FLOW: float(user_input[CONF_MAX_FLOW]),
+            }
+            await entry.runtime_data.async_configure(options)
+            return self.async_create_entry(data=options)
+        url = _webhook_url(self.hass, entry.data[CONF_WEBHOOK_ID])
+        schema = probatio.Schema(
+            {
+                **_pairing(url),
+                probatio.Required(CONF_INTERVAL, default=current[CONF_INTERVAL]): _number(
+                    MIN_INTERVAL, MAX_INTERVAL, unit="s"
+                ),
+                probatio.Required(CONF_TORCH, default=current[CONF_TORCH]): BooleanSelector(),
+                probatio.Required(CONF_MAX_FLOW, default=current[CONF_MAX_FLOW]): _number(
+                    0.1, 100, 0.1, "m³/h"
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="phone",
+            data_schema=schema,
+            description_placeholders={"webhook_url": url},
         )

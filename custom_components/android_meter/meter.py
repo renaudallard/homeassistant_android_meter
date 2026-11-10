@@ -46,6 +46,7 @@ from typing import Any
 
 from aiohttp import web
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -175,6 +176,10 @@ def _decimal(value: object) -> Decimal | None:
     return number if number.is_finite() and number >= 0 else None
 
 
+def teach_issue_id(entry_id: str) -> str:
+    return f"teach_{entry_id}"
+
+
 def _units(value: Decimal, decimals: int, rounding: str) -> int:
     """A volume in units of the last drum."""
     return int(value.scaleb(decimals).to_integral_value(rounding=rounding))
@@ -193,6 +198,7 @@ class Meter:
 
     def __init__(self, hass: HomeAssistant, entry_id: str, options: Mapping[str, Any]) -> None:
         self.hass = hass
+        self.entry_id = entry_id
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry_id}")
         self._lock = asyncio.Lock()
         self.settings = Settings.from_options(options)
@@ -225,6 +231,7 @@ class Meter:
             if self.read_at is None:
                 self.read_at = dt_util.utcnow()
         self._arm_silence()
+        self._sync_issue()
 
     async def async_unload(self) -> None:
         if self._silence is not None:
@@ -258,8 +265,32 @@ class Meter:
 
     @callback
     def _notify(self) -> None:
+        self._sync_issue()
         for update in list(self._listeners):
             update()
+
+    def untaught(self) -> bool:
+        """Whether the crop is set but no reading has been learnt yet."""
+        return self.settings.geometry is not None and (
+            self.reading is None or not any(self.patches.counts())
+        )
+
+    @callback
+    def _sync_issue(self) -> None:
+        """Raise the Repairs notice asking for a reading, or clear it."""
+        issue = teach_issue_id(self.entry_id)
+        if self.untaught():
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                issue,
+                is_fixable=True,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="teach",
+                data={"entry_id": self.entry_id},
+            )
+        else:
+            ir.async_delete_issue(self.hass, DOMAIN, issue)
 
     @callback
     def _arm_silence(self) -> None:

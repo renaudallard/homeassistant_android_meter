@@ -38,11 +38,16 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.network import NoURLAvailableError
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant.common import async_fire_time_changed
 from pytest_homeassistant.components.diagnostics import (
     get_diagnostics_for_config_entry,
+)
+from pytest_homeassistant.components.repairs import (
+    process_repair_fix_flow,
+    start_repair_fix_flow,
 )
 
 from custom_components.android_meter.const import DOMAIN
@@ -102,12 +107,40 @@ async def _post(client: Any, entry: Any, data: bytes, kind: str = "image/jpeg") 
     )
 
 
-async def _options(hass: HomeAssistant, entry: Any, **fields: Any) -> dict[str, Any]:
+async def _open(hass: HomeAssistant, entry: Any, step: str) -> dict[str, Any]:
+    """The options menu, then one of its forms."""
     result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.MENU
+    assert result["menu_options"] == ["teach", "counter", "phone"]
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": step}
+    )
     assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == step
+    return dict(result)
+
+
+async def _step(
+    hass: HomeAssistant, entry: Any, step: str, fields: dict[str, Any]
+) -> dict[str, Any]:
+    result = await _open(hass, entry, step)
     result = await hass.config_entries.options.async_configure(result["flow_id"], fields)
     await hass.async_block_till_done()
     return dict(result)
+
+
+async def _options(hass: HomeAssistant, entry: Any, **fields: Any) -> dict[str, Any]:
+    """Crop fields through Crop and counter, then the reading through Teach."""
+    counter = {key: value for key, value in fields.items() if key not in ("reading", "forget")}
+    teach = {key: value for key, value in fields.items() if key in ("reading", "forget")}
+    result: dict[str, Any] = {}
+    if counter:
+        result = await _step(hass, entry, "counter", counter)
+        if result["type"] is not FlowResultType.CREATE_ENTRY:
+            return result
+    if teach:
+        result = await _step(hass, entry, "teach", teach)
+    return result
 
 
 async def test_a_frame_is_read_once_taught(
@@ -167,21 +200,23 @@ async def test_options_errors(hass: HomeAssistant, hass_client_no_auth: Any) -> 
     entry = await _entry(hass)
     client = await hass_client_no_auth()
 
-    result = await _options(hass, entry, **CROP, reading="1234.567")
-    assert result["errors"] == {"base": "no_frame"}
     result = await _options(hass, entry, reading="1234.567")
     assert result["errors"] == {"base": "no_crop"}
+    result = await _options(hass, entry, **CROP, reading="1234.567")
+    assert result["errors"] == {"base": "no_frame"}
+    result = await _options(hass, entry, reading="")
+    assert result["errors"] == {"reading": "no_reading"}
 
     await _post(client, entry, synth.frame(1234567, LAYOUT, random.Random(2)))
     result = await _options(hass, entry, **{**CROP, "x": 600})
     assert result["errors"] == {"base": "crop_outside"}
     result = await _options(hass, entry, **{**CROP, "digits": 4, "decimals": 5})
     assert result["errors"] == {"base": "too_many_decimals"}
-    result = await _options(hass, entry, **CROP, reading="123456.789")
+    assert entry.options["x"] == CROP["x"]
+    result = await _options(hass, entry, reading="123456.789")
     assert result["errors"] == {"reading": "bad_reading"}
-    result = await _options(hass, entry, **CROP, reading="1234.5678")
+    result = await _options(hass, entry, reading="1234.5678")
     assert result["errors"] == {"reading": "bad_reading"}
-    assert entry.options["width"] == 0
 
 
 async def test_the_phone_goes_offline(
@@ -240,15 +275,20 @@ async def test_the_reading_survives_a_restart_and_removal_cleans_up(
 
 async def test_pairing_code(hass: HomeAssistant) -> None:
     entry = await _entry(hass)
-    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await _open(hass, entry, "phone")
     qr = _qr(result)
     assert qr is not None
     assert qr.startswith(
         "androidmeter://setup?url=http%3A%2F%2F192.168.1.10%3A8123%2Fapi%2Fwebhook%2F"
     )
-    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"interval": 30, "torch": False, "max_flow": 10}
+    )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert "qr_code" not in entry.options
+    assert entry.options["interval"] == 30
+    assert entry.options["torch"] is False
+    assert entry.options["max_flow"] == 10.0
 
 
 async def test_no_pairing_code_without_an_address(hass: HomeAssistant) -> None:
@@ -259,3 +299,48 @@ async def test_no_pairing_code_without_an_address(hass: HomeAssistant) -> None:
 
     with patch("custom_components.android_meter.config_flow.webhook.async_generate_url", nowhere):
         await _entry(hass, internal_url=None)
+
+
+async def test_the_teaching_screen_shows_the_picture(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    entry = await _entry(hass)
+    await _post(await hass_client_no_auth(), entry, synth.frame(1234567, LAYOUT, random.Random(6)))
+    await _options(hass, entry, **CROP)
+    result = await _open(hass, entry, "teach")
+    placeholders = result["description_placeholders"]
+    assert placeholders["frame_image"].startswith(
+        "![](/api/image_proxy/image.gas_meter_frame?token="
+    )
+    assert placeholders["example"] == "01234.567"
+    assert placeholders["known"] == "-"
+    assert placeholders["unknown"] == "0 1 2 3 4 5 6 7 8 9"
+
+
+async def test_a_reading_is_asked_in_repairs(
+    hass: HomeAssistant, hass_client: Any, hass_client_no_auth: Any
+) -> None:
+    assert await async_setup_component(hass, "repairs", {})
+    entry = await _entry(hass)
+    issues = ir.async_get(hass)
+    issue_id = f"teach_{entry.entry_id}"
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
+
+    await _post(await hass_client_no_auth(), entry, synth.frame(1234567, LAYOUT, random.Random(7)))
+    await _options(hass, entry, **CROP)
+    issue = issues.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.is_fixable
+    assert issue.translation_placeholders is None
+
+    client = await hass_client()
+    flow = await start_repair_fix_flow(client, DOMAIN, issue_id)
+    assert flow["step_id"] == "init"
+    assert flow["description_placeholders"]["frame_image"].startswith("![](/api/image_proxy/")
+    flow = await process_repair_fix_flow(client, flow["flow_id"], {"reading": "nonsense"})
+    assert flow["errors"] == {"reading": "bad_reading"}
+    flow = await process_repair_fix_flow(client, flow["flow_id"], {"reading": "01234.567"})
+    assert flow["type"] == "create_entry"
+    await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
+    assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"

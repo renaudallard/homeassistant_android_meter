@@ -132,14 +132,14 @@ Android SDK platform 37).
    text it shows to Android Meter, or copy it and press **Paste the pairing
    link** in the app. The app asks whether to send the pictures to that Home
    Assistant; it names only the host, as the rest of the address is the
-   webhook's secret. The code is also in the integration's options. Typing
+   webhook's secret. The code is also in Configure > Phone and pairing. Typing
    the address in the app works too.
 4. **In the app**, pick the camera (the list shows how close each one
    focuses) and press **Take one picture**. The picture is shown in the app
    and sent to Home Assistant.
 5. **In Home Assistant**, open the **Frame** image of the new device: it
-   shows the last picture. Open the integration's options (Configure) and
-   set:
+   shows the last picture. Open the integration's options (Configure),
+   choose **Crop and counter** and set:
    - **Rotation**, so the digits stand upright;
    - **Crop left, top, width and height**, in pixels of the turned picture,
      from the top left corner of the first window to the bottom right
@@ -149,32 +149,43 @@ Android SDK platform 37).
 
    Save, take another picture and check the Frame image: each window is
    outlined. Adjust until every outline sits on its window.
-6. **Teach the reading**: in the options, type the reading the Frame image
-   shows, for example `00123.456`, and save. The status turns to OK.
+6. **Teach the reading**, see below. Settings also shows a Repairs notice,
+   **Android Meter needs a reading**, until it is done.
 7. **Start** the app. It keeps taking pictures with the screen off, as a
    foreground service with its notification showing. Press **Let it run
    without battery limits** once, so Android does not stop it to save
    battery.
 
-The **Learnt digits** sensor says how many of the ten are known; the
-options list which ones are still missing.
+## Teaching the digits
+
+The integration learns the digits of your meter from the readings you type
+in, then goes on learning on its own as the meter turns.
+
+1. Open Configure > **Teach the reading**, or press **Fix** on the Repairs
+   notice. The screen shows the last picture with each drum outlined.
+2. Type the reading the picture shows, every drum from left to right, for
+   example `01234.567`. A drum caught between two digits counts as the lower
+   one.
+3. Save. Every drum showing a whole digit is learnt, and the status turns
+   to OK.
+
+The screen lists the digits learnt and the ones still to learn, and the
+**Learnt digits** sensor counts them. Teaching again later, when the meter
+shows other digits, gets all ten sooner. **Forget the digits learnt**
+starts over, for instance after a wrong reading was typed.
 
 ## Options
 
-| Option | Meaning |
+Configure opens a menu of three screens.
+
+| Screen | Options |
 |---|---|
-| Interval | Seconds between two pictures (10 to 3600, 60 by default). |
-| Torch | Light the meter for each picture. |
-| Rotation | Clockwise turn that makes the digits upright. |
-| Crop left, top, width, height | The windows, in pixels of the turned picture. |
-| Gap between windows | Housing between two windows, in pixels. |
-| Drums, Decimal drums | How many drums, and how many after the decimal point. |
-| Largest flow | The most the meter passes: 6 m³/h for a G4, 10 for a G6. |
-| Reading shown on the last frame | Teaches the reading; leave empty otherwise. |
-| Forget the digits learnt | Start learning again, after a wrong reading was taught. |
+| Teach the reading | The reading the last picture shows; Forget the digits learnt. |
+| Crop and counter | Rotation (clockwise turn that makes the digits upright); crop left, top, width and height, in pixels of the turned picture; gap between windows; drums and decimal drums. |
+| Phone and pairing | The pairing QR code; interval (10 to 3600 s, 60 by default); torch; largest flow (6 m³/h for a G4, 10 for a G6). |
 
 Changing the rotation, crop, gap or number of drums forgets the digits
-learnt, since they no longer match the windows; type the reading again.
+learnt, since they no longer match the windows; teach the reading again.
 
 ## What you get
 
@@ -192,7 +203,7 @@ learnt, since they no longer match the windows; type the reading again.
 | Unreadable picture | The phone sent something that is not a JPEG. |
 | Crop not set | Set the crop in the options. |
 | Crop outside the picture | The crop does not fit the picture. |
-| Reading to teach | Type the reading in the options. |
+| Reading to teach | Teach the reading (Configure > Teach the reading, or the Repairs notice). |
 | Digits not recognised | No drum at rest matched a known digit: light, focus, or the phone moved. |
 | Implausible reading | The drums show a value the meter cannot have reached. Check the reading, and type the right one. |
 | OK | The picture was read. |

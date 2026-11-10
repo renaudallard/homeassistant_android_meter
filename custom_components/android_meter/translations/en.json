@@ -24,11 +24,28 @@
     "step": {
       "init": {
         "title": "Meter settings",
-        "description": "To pair a phone, scan the pairing code below with its camera app and share the text to Android Meter. The phone posts to `{webhook_url}`.\n\nLast frame: {frame} pixels. Look at the frame image entity to place the crop: from the top left corner of the first drum window to the bottom right corner of the last one, the windows only. Each window is outlined there once saved.\n\nDigits learnt: {known}. Still to learn: {unknown}. To teach it, type the reading the frame image shows; digits are also learnt on their own as the meter turns.",
+        "menu_options": {
+          "teach": "Teach the reading",
+          "counter": "Crop and counter",
+          "phone": "Phone and pairing"
+        }
+      },
+      "teach": {
+        "title": "Teach the reading",
+        "description": "{frame_image}\n\nType the reading this picture shows, every drum from left to right, for example `{example}`. Read the drums, not the outlines: a drum between two digits counts as the lower one. Each drum showing a whole digit is learnt.\n\nDigits learnt: {known}. Still to learn: {unknown}. Teach again later, when the meter shows other digits, to learn them sooner; the meter also learns them on its own as it turns.",
         "data": {
-          "qr_code": "Pairing code",
-          "interval": "Interval",
-          "torch": "Torch",
+          "reading": "Reading shown in this picture",
+          "forget": "Forget the digits learnt"
+        },
+        "data_description": {
+          "reading": "Every drum, decimals included, with a point or a comma before the decimals.",
+          "forget": "Start learning again, for instance after a wrong reading was taught. Changing the crop forgets them anyway."
+        }
+      },
+      "counter": {
+        "title": "Crop and counter",
+        "description": "Last picture: {frame} pixels. Look at the Frame image entity to place the crop: from the top left corner of the first drum window to the bottom right corner of the last one, the windows only. Each window is outlined there once saved. Changing the crop forgets the digits learnt.",
+        "data": {
           "rotation": "Rotation",
           "x": "Crop left",
           "y": "Crop top",
@@ -36,22 +53,29 @@
           "height": "Crop height",
           "gap": "Gap between windows",
           "digits": "Drums",
-          "decimals": "Decimal drums",
-          "max_flow": "Largest flow",
-          "reading": "Reading shown on the last frame",
-          "forget": "Forget the digits learnt"
+          "decimals": "Decimal drums"
+        },
+        "data_description": {
+          "rotation": "How far to turn the picture clockwise so the digits stand upright. The crop is measured on the turned picture.",
+          "gap": "Width of the housing between two windows, in pixels of the picture.",
+          "digits": "Number of drums, decimal ones included.",
+          "decimals": "Drums after the decimal point, usually red."
+        }
+      },
+      "phone": {
+        "title": "Phone and pairing",
+        "description": "To pair a phone, scan the pairing code below with its camera app and share the text to Android Meter. The phone posts to `{webhook_url}`.",
+        "data": {
+          "qr_code": "Pairing code",
+          "interval": "Interval",
+          "torch": "Torch",
+          "max_flow": "Largest flow"
         },
         "data_description": {
           "qr_code": "Scan with the phone's camera app, then share the text to Android Meter. It holds this Home Assistant's address.",
           "interval": "How long the phone waits between two pictures.",
           "torch": "Light the meter for each picture.",
-          "rotation": "How far to turn the picture clockwise so the digits stand upright. The crop is measured on the turned picture.",
-          "gap": "Width of the housing between two windows, in pixels of the picture.",
-          "digits": "Number of drums, decimal ones included.",
-          "decimals": "Drums after the decimal point, usually red.",
-          "max_flow": "The most the meter can pass. 6 m³/h for a G4 meter, 10 for a G6. Readings that would need more are refused.",
-          "reading": "As printed on the drums, for example 01234.567. Leave empty to keep the current reading.",
-          "forget": "Start learning again, for instance after a wrong reading was taught. Changing the crop forgets them anyway."
+          "max_flow": "The most the meter can pass. 6 m³/h for a G4 meter, 10 for a G6. Readings that would need more are refused."
         }
       }
     },
@@ -62,7 +86,8 @@
       "too_many_decimals": "There cannot be more decimal drums than drums.",
       "no_crop": "Set the crop before teaching a reading.",
       "no_frame": "No frame has arrived yet to teach the reading from.",
-      "nothing_at_rest": "No drum shows a whole digit on the last frame. Wait for the meter to stop and try again."
+      "nothing_at_rest": "No drum shows a whole digit on the last frame. Wait for the meter to stop and try again.",
+      "no_reading": "Type the reading the picture shows, or tick Forget the digits learnt."
     }
   },
   "selector": {
@@ -101,6 +126,38 @@
       },
       "learnt_digits": {
         "name": "Learnt digits"
+      }
+    }
+  },
+  "issues": {
+    "teach": {
+      "title": "Android Meter needs a reading",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Teach the reading",
+            "description": "{frame_image}\n\nType the reading this picture shows, every drum from left to right, for example `{example}`. Read the drums, not the outlines: a drum between two digits counts as the lower one. Each drum showing a whole digit is learnt.\n\nDigits learnt: {known}. Still to learn: {unknown}. Teach again later, when the meter shows other digits, to learn them sooner; the meter also learns them on its own as it turns.",
+            "data": {
+              "reading": "Reading shown in this picture",
+              "forget": "Forget the digits learnt"
+            },
+            "data_description": {
+              "reading": "Every drum, decimals included, with a point or a comma before the decimals.",
+              "forget": "Start learning again, for instance after a wrong reading was taught. Changing the crop forgets them anyway."
+            }
+          }
+        },
+        "error": {
+          "bad_reading": "This reading does not fit the counter: check the number of drums and decimal drums.",
+          "no_reading": "Type the reading the picture shows, or tick Forget the digits learnt.",
+          "no_crop": "Set the crop before teaching a reading.",
+          "no_frame": "No frame has arrived yet to teach the reading from.",
+          "crop_outside": "The crop goes past the edge of the last frame.",
+          "nothing_at_rest": "No drum shows a whole digit on the last frame. Wait for the meter to stop and try again."
+        },
+        "abort": {
+          "not_loaded": "The meter is not running. Check the integration and try again."
+        }
       }
     }
   }
