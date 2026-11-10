@@ -176,6 +176,7 @@ class CropActivity : Activity() {
                     null -> getString(R.string.crop_found) to reply.crop
                     "crop_locked" -> getString(R.string.crop_locked) to null
                     "counter_not_found" -> getString(R.string.crop_not_found) to null
+                    "no_frame" -> getString(R.string.crop_no_frame) to null
                     else -> getString(R.string.crop_refused, reply.error) to null
                 }
             } catch (e: Exception) {
