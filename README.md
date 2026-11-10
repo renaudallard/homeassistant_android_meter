@@ -202,7 +202,8 @@ the reading again when a drum shows one of the **Digits to learn** learns
 it at once.
 
 A change of crop forgets the digits learnt, since they no longer match the
-windows. **Lock the crop** keeps a slip from doing that: while it is on, the
+windows. A change of **Decimal drums** keeps them but drops the reading,
+which the drums no longer show on the same scale: teach it again. **Lock the crop** keeps a slip from doing that: while it is on, the
 crop and counter controls, **Find the counter** and the phone's crop editor
 are refused. Turn it off to move the crop, then teach the reading again.
 

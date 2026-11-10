@@ -460,9 +460,10 @@ class Meter:
         picture is the frame the reading was read from, as picture() gave
         it when the screen was drawn: frames that came in since show other
         drums. Changing the crop, or asking to forget, drops what was
-        learnt. Nothing changes when the reading cannot be taught. A
-        reading taught locks the crop, so that a slip on the device page
-        cannot undo it.
+        learnt. Changing the decimal drums drops the reading, which the
+        drums no longer show on the same scale. Nothing changes when the
+        reading cannot be taught. A reading taught locks the crop, so that
+        a slip on the device page cannot undo it.
         """
         async with self._lock:
             await self._configure(options, reading, forget, picture)
@@ -478,6 +479,7 @@ class Meter:
         """What async_configure does, under the lock."""
         settings = Settings.from_options(options)
         fresh = forget or settings.shape() != self.settings.shape()
+        rescaled = settings.decimals != self.settings.decimals
         patches = recognizer.Patches() if fresh else self.patches
         if reading is not None:
             if settings.geometry is None:
@@ -502,7 +504,11 @@ class Meter:
             self.status = STATUS_OK
             self.last = None
             self.locked = True
-        elif fresh:
+        elif fresh or rescaled:
+            if rescaled:
+                self.reading = None
+                self.ceiling = None
+                self.read_at = None
             self.status = STATUS_UNTAUGHT if settings.geometry is not None else STATUS_NO_CROP
             self.last = None
         self._save()

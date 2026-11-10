@@ -254,6 +254,34 @@ async def test_a_crop_of_the_last_drums(
     assert hass.states.get("sensor.gas_meter_reading").state == "61234.590"
 
 
+async def test_new_decimal_drums_ask_for_the_reading(
+    hass: HomeAssistant, hass_client_no_auth: Any, freezer: FrozenDateTimeFactory
+) -> None:
+    """The same drums read with one decimal less are ten times the volume:
+    the reading is dropped and asked again, the digits are kept."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    rng = random.Random(13)
+    await _post(client, entry, synth.frame(89012345, LAYOUT, rng, light=0.9, shade=0))
+    await _options(hass, entry, **CROP, reading="89012.345")
+    await _post(client, entry, synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0))
+    await _options(hass, entry, reading="01234.567")
+    await hass.services.async_call(
+        "switch", "turn_off", {"entity_id": "switch.gas_meter_lock_the_crop"}, blocking=True
+    )
+    await _crop(hass, decimals=2)
+    assert hass.states.get("sensor.gas_meter_reading").state == "unknown"
+    assert hass.states.get("sensor.gas_meter_status").state == "untaught"
+    assert hass.states.get("sensor.gas_meter_learnt_digits").state == "10"
+    assert ir.async_get(hass).async_get_issue(DOMAIN, f"teach_{entry.entry_id}") is not None
+
+    await _options(hass, entry, reading="012345.67")
+    freezer.tick(timedelta(seconds=60))
+    response = await _post(client, entry, synth.frame(1234575, LAYOUT, rng, light=0.9, shade=0))
+    assert (await response.json())["status"] == "ok"
+    assert hass.states.get("sensor.gas_meter_reading").state == "12345.75"
+
+
 async def test_the_webhook_refuses_what_is_not_a_frame(
     hass: HomeAssistant, hass_client_no_auth: Any
 ) -> None:
