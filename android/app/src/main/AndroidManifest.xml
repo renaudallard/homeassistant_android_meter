@@ -29,8 +29,14 @@
         android:theme="@android:style/Theme.DeviceDefault"
         android:usesCleartextTraffic="true">
 
+        <!--
+          Turning the phone would otherwise start the screens anew: the
+          picture being taken by hand would be cancelled, and a crop not
+          yet saved lost. Both lay themselves out again instead.
+        -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:exported="true"
             android:launchMode="singleTask">
             <intent-filter>
@@ -54,6 +60,7 @@
 
         <activity
             android:name=".CropActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:exported="false" />
 
         <service

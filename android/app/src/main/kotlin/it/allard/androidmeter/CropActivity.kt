@@ -28,12 +28,14 @@
 package it.allard.androidmeter
 
 import android.app.Activity
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import org.json.JSONException
 import org.json.JSONObject
@@ -50,6 +52,8 @@ class CropActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var save: Button
     private lateinit var find: Button
+    private lateinit var root: LinearLayout
+    private lateinit var controls: ScrollView
     private var decimals = 3
     private var step = 1f
     private val shownValues = mutableListOf<() -> Unit>()
@@ -77,7 +81,6 @@ class CropActivity : Activity() {
         find = Button(this).apply { text = getString(R.string.crop_find) }
         column.addView(status, MATCH_PARENT, WRAP_CONTENT)
         column.addView(find, MATCH_PARENT, WRAP_CONTENT)
-        column.addView(view, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
         column.addView(stepper(R.string.drums, { view.digits.toString() }) { d ->
             // A drum more or less moves the box's right edge by one step,
             // the windows keeping their size: drums the counter finder could
@@ -98,10 +101,33 @@ class CropActivity : Activity() {
             view.gap = (view.gap + d * step).coerceIn(0f, view.box.width() / view.digits)
         })
         column.addView(save, MATCH_PARENT, WRAP_CONTENT)
-        setContentView(column)
+        controls = ScrollView(this).apply { addView(column) }
+        root = LinearLayout(this)
+        root.addView(view)
+        root.addView(controls)
+        lay(resources.configuration)
+        setContentView(root)
         title = getString(R.string.crop_title)
         save.setOnClickListener { send() }
         find.setOnClickListener { findIt() }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        /* Not when onCreate found no picture and finished. */
+        if (::root.isInitialized) lay(newConfig)
+    }
+
+    /* The picture above the controls, or beside them on a screen held sideways. */
+    private fun lay(config: Configuration) {
+        val wide = config.orientation == Configuration.ORIENTATION_LANDSCAPE
+        root.orientation = if (wide) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+        view.layoutParams =
+            if (wide) LinearLayout.LayoutParams(0, MATCH_PARENT, 1f)
+            else LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f)
+        controls.layoutParams =
+            if (wide) LinearLayout.LayoutParams(0, MATCH_PARENT, 1f)
+            else LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
     }
 
     /* The crop Home Assistant reported, or a box across the middle. */
