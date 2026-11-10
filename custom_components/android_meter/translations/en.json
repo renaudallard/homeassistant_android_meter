@@ -10,7 +10,7 @@
       },
       "pair": {
         "title": "Pair the phone",
-        "description": "**Pair the phone with this code**\n\n1. On the phone, open the camera app and point it at the QR code below.\n2. Tap **Share** on the text the camera shows and pick **Android Meter**. If the camera only offers Copy, copy it, open Android Meter and press **Paste the pairing link**.\n3. Android Meter asks whether to send the pictures to this Home Assistant. Check the address and tap **Use it**.\n\nTo type the address instead: `{webhook_url}`\n\nThe phone must be on the same network as Home Assistant. Once the first picture has arrived, press **Set the crop** in Android Meter, then **Find the counter**, and teach the reading. The meter's device page has the same settings as controls, next to the Frame image, for fine tuning.",
+        "description": "**Pair the phone with this code**\n\n1. On the phone, open the camera app and point it at the QR code below.\n2. Tap **Share** on the text the camera shows and pick **Android Meter**. If the camera only offers Copy, copy it, open Android Meter and press **Paste the pairing link**.\n3. Android Meter asks whether to send the pictures to this Home Assistant. Check the address and tap **Use it**.\n\nTo type the address instead: `{webhook_url}`\n\nNo code below means Home Assistant does not know its address on your network: set it in Settings > System > Network, then find the code in Configure > Phone and pairing.\n\nThe phone must be on the same network as Home Assistant. Once the first picture has arrived, press **Set the crop** in Android Meter, then **Find the counter**, and teach the reading. The meter's device page has the same settings as controls, next to the Frame image, for fine tuning.",
         "data": {
           "qr_code": "Pairing code"
         },
@@ -43,7 +43,7 @@
       },
       "phone": {
         "title": "Phone and pairing",
-        "description": "To pair a phone, scan the pairing code below with its camera app and share the text to Android Meter. The phone posts to `{webhook_url}`.",
+        "description": "To pair a phone, scan the pairing code below with its camera app and share the text to Android Meter. The phone posts to `{webhook_url}`. No code below means Home Assistant does not know its address on your network: set it in Settings > System > Network.",
         "data": {
           "qr_code": "Pairing code",
           "interval": "Interval",
