@@ -237,6 +237,8 @@ class MainActivity : Activity() {
     private fun refresh() {
         val running = Status.running
         toggle.text = getString(if (running) R.string.stop else R.string.start)
+        /* Both would open the camera, and one of them would fail. */
+        toggle.isEnabled = running || !shooting
         shoot.isEnabled = !running && !shooting
         url.isEnabled = !running
         camera.isEnabled = !running
