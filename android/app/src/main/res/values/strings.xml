@@ -38,6 +38,7 @@
     <string name="no_camera">This phone has no usable camera.</string>
     <string name="denied">The camera permission is needed.</string>
     <string name="shooting">Taking a picture…</string>
+    <string name="cancelled">Picture cancelled.</string>
     <string name="camera_failed">Camera failed: %1$s</string>
     <string name="sent">%1$s: sent, Home Assistant says %2$s. Next in %3$d s.</string>
     <string name="send_failed">%1$s: not sent, %2$s. Next in %3$d s.</string>

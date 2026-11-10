@@ -51,7 +51,10 @@ fun shootAndSend(context: Context, handler: Handler, once: Boolean, then: (Int) 
     val shot = Shot(context, camera, settings.torch, handler) { result ->
         val now = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date())
         val jpeg = result.getOrElse {
-            if (it is CancellationException) return@Shot
+            if (it is CancellationException) {
+                Status.say(context.getString(R.string.cancelled))
+                return@Shot
+            }
             Status.say(context.getString(R.string.camera_failed, it.message ?: it.javaClass.simpleName))
             then(settings.interval)
             return@Shot
