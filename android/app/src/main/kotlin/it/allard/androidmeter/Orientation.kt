@@ -48,7 +48,7 @@ object Orientation {
         if (listener != null) return
         listener = object : OrientationEventListener(context.applicationContext) {
             override fun onOrientationChanged(orientation: Int) {
-                if (orientation != ORIENTATION_UNKNOWN) degrees = (orientation + 45) / 90 % 4 * 90
+                degrees = if (orientation == ORIENTATION_UNKNOWN) 0 else (orientation + 45) / 90 % 4 * 90
             }
         }.also { if (it.canDetectOrientation()) it.enable() }
     }
