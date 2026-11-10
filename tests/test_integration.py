@@ -760,3 +760,19 @@ async def test_finding_the_counter(hass: HomeAssistant, hass_client_no_auth: Any
     assert reply["error"] in (None, "crop_locked")
     assert reply["crop"]["locked"] is True
     assert dict(entry.options) == before
+
+
+async def test_a_row_longer_than_a_counter_is_not_one(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """The finder counts as many drums as it sees, more than the options
+    allow."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    await _post(client, entry, synth.frame(1234567, LAYOUT, random.Random(10), light=0.9, shade=0))
+    found = {**CROP, "digits": 14, "decimals": 8}
+    url = f"/api/webhook/{entry.data['webhook_id']}"
+    with patch("custom_components.android_meter.meter.autocrop.find", return_value=found):
+        response = await client.post(url, json={"find": True})
+    assert (await response.json())["error"] == "counter_not_found"
+    assert entry.options["digits"] != 14

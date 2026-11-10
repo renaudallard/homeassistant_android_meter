@@ -219,7 +219,9 @@ def _find_counter(data: bytes) -> dict[str, int] | None:
         frame = recognizer.open_frame(data, 0, "RGB")
     except recognizer.FrameError:
         return None
-    return autocrop.find(frame)
+    crop = autocrop.find(frame)
+    # A row of more drums than a counter has is not one.
+    return None if crop is None else _checked(crop)
 
 
 def _find_message(body: bytes) -> bool:
@@ -239,7 +241,12 @@ def _crop_message(body: bytes) -> dict[str, int] | None:
     except ValueError:
         return None
     crop = message.get("crop") if isinstance(message, dict) else None
-    if not isinstance(crop, dict) or not crop or not set(crop) <= set(CROP_FIELDS):
+    return _checked(crop) if isinstance(crop, dict) else None
+
+
+def _checked(crop: dict[str, Any]) -> dict[str, int] | None:
+    """Crop fields, if each is a whole number in its range, or None."""
+    if not crop or not set(crop) <= set(CROP_FIELDS):
         return None
     for key, value in crop.items():
         low, high = _CROP_RANGES[key]
