@@ -189,6 +189,18 @@ learn** lists the ones missing. Teaching again later, when the meter shows
 other digits, gets all ten sooner. **Forget the digits learnt** starts
 over, for instance after a wrong reading was typed.
 
+Until a digit is learnt, a drum showing it is left out: the Frame image
+outlines it in orange, with the nearest known digit under it, and the
+reading stays at the last value it is sure of rather than guess. The
+digits not taught are learnt as the meter turns, whenever a picture leaves
+only one possible digit for a drum at rest. How long that takes depends on
+how much gas flows. In simulation of a counter of 8 drums, 3 of them
+decimal, with gas flowing about a sixth of the time at 1 to 2.5 m³/h, one
+reading taught got all ten digits learnt after 5 to 30 hours, once 1 to
+6 m³ had gone through. A meter that turns little learns slower. Teaching
+the reading again when a drum shows one of the **Digits to learn** learns
+it at once.
+
 A change of crop forgets the digits learnt, since they no longer match the
 windows. **Lock the crop** keeps a slip from doing that: while it is on, the
 crop and counter controls, **Find the counter** and the phone's crop editor
