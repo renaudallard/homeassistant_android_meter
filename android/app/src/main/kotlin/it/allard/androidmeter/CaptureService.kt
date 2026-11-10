@@ -131,17 +131,19 @@ class CaptureService : Service() {
     override fun onDestroy() {
         if (running) Orientation.stop()
         running = false
-        handler.removeCallbacksAndMessages(null)
+        handler.removeCallbacks(tick)
         val lock = wakeLock
         /*
          * Released on the capture thread, after the picture under way, which
-         * may have taken it again before it saw running turn false.
+         * may have taken it again before it saw running turn false. The
+         * thread quits from there too: a camera opening when Stop came
+         * calls back on it, and is closed then, once the shot is cancelled.
          */
         handler.post {
             shot?.cancel()
             lock?.release()
+            thread.quitSafely()
         }
-        thread.quitSafely()
         Status.running(false)
         super.onDestroy()
     }

@@ -190,8 +190,11 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         thread?.let { t ->
-            Handler(t.looper).post { single?.cancel() }
-            t.quitSafely()
+            /* Quit from the thread itself, as the capture service does. */
+            Handler(t.looper).post {
+                single?.cancel()
+                t.quitSafely()
+            }
         }
         thread = null
         super.onDestroy()
