@@ -27,10 +27,9 @@
 
 Setting up only names the meter and hands out the webhook address the app
 needs, as a QR code the phone's camera reads and shares to the app, and
-as text. Everything else lives in the options, a menu set once a frame has
-come in: the reading to teach, and the phone. The crop and the counter
-are set on the phone, or with controls on the device page next to the
-Frame image.
+as text. Everything else lives in the options, a menu of two screens: the
+reading to teach, and the phone. The crop and the counter are set on the
+phone, or with controls on the device page next to the Frame image.
 """
 
 from __future__ import annotations
