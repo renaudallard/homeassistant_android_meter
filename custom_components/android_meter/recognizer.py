@@ -248,12 +248,14 @@ def _stroke(mask: int, width: int, height: int) -> int:
     """The digit's own ink: the largest stroke, and any stroke beside it.
 
     Marks wholly above or below it, such as the bar some drums print under
-    each digit, or a speck, are left out.
+    each digit, or a speck, are left out, and so is a stroke reaching in
+    from the side of the window, as an edge of the frame or a seal mark
+    printed between two drums does.
     """
     size = width * height
     bits = bin(mask)[2:].zfill(size)
     seen = [c == "0" for c in bits]
-    strokes: list[tuple[int, int, int, list[int]]] = []
+    strokes: list[tuple[int, int, int, bool, list[int]]] = []
     for start in range(size):
         if seen[start]:
             continue
@@ -273,13 +275,16 @@ def _stroke(mask: int, width: int, height: int) -> int:
                         stack.append(near)
                         found.append(near)
         rows = [at // width for at in found]
-        strokes.append((len(found), min(rows), max(rows), found))
+        side = any(at % width in (0, width - 1) for at in found)
+        strokes.append((len(found), min(rows), max(rows), side, found))
     if not strokes:
         return 0
-    _, top, bottom, _ = max(strokes, key=lambda stroke: stroke[0])
+    main = max(strokes, key=lambda stroke: stroke[0])
+    _, top, bottom, _, _ = main
     kept = 0
-    for _, first, last, found in strokes:
-        if last >= top and first <= bottom:
+    for stroke in strokes:
+        _, first, last, side, found = stroke
+        if stroke is main or (last >= top and first <= bottom and not side):
             for at in found:
                 kept |= 1 << (size - 1 - at)
     return kept
