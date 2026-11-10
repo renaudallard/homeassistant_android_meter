@@ -132,10 +132,16 @@ class CaptureService : Service() {
         if (running) Orientation.stop()
         running = false
         handler.removeCallbacksAndMessages(null)
-        handler.post { shot?.cancel() }
+        val lock = wakeLock
+        /*
+         * Released on the capture thread, after the picture under way, which
+         * may have taken it again before it saw running turn false.
+         */
+        handler.post {
+            shot?.cancel()
+            lock?.release()
+        }
         thread.quitSafely()
-        wakeLock?.release()
-        wakeLock = null
         Status.running(false)
         super.onDestroy()
     }
