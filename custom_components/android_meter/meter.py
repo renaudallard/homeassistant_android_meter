@@ -175,11 +175,11 @@ def parse_reading(text: str, settings: Settings) -> Decimal | None:
 
 def frame_error(settings: Settings, size: tuple[int, int] | None) -> str | None:
     """Why the crop does not fit a frame of size, as sent, or None."""
+    if settings.decimals > settings.digits:
+        return "too_many_decimals"
     g = settings.geometry
     if g is None:
         return None
-    if settings.decimals > g.digits:
-        return "too_many_decimals"
     if g.window < 4 or g.height < 8:
         return "windows_too_small"
     if size is None:

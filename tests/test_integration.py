@@ -323,6 +323,9 @@ async def test_options_errors(hass: HomeAssistant, hass_client_no_auth: Any) -> 
 
     result = await _options(hass, entry, reading="1234.567")
     assert result["errors"] == {"base": "no_crop"}
+    # No crop yet, and still no more decimal drums than drums.
+    result = await _options(hass, entry, digits=2)
+    assert result["errors"] == {"base": "too_many_decimals"}
     result = await _options(hass, entry, **CROP, reading="1234.567")
     assert result["errors"] == {"base": "no_frame"}
     result = await _options(hass, entry, reading="")
