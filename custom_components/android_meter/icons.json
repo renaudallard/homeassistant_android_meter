@@ -15,6 +15,52 @@
       "learnt_digits": {
         "default": "mdi:numeric"
       }
+    },
+    "number": {
+      "crop_left": {
+        "default": "mdi:arrow-collapse-right"
+      },
+      "crop_top": {
+        "default": "mdi:arrow-collapse-down"
+      },
+      "crop_width": {
+        "default": "mdi:arrow-expand-horizontal"
+      },
+      "crop_height": {
+        "default": "mdi:arrow-expand-vertical"
+      },
+      "gap": {
+        "default": "mdi:arrow-split-vertical"
+      },
+      "digits": {
+        "default": "mdi:counter"
+      },
+      "decimals": {
+        "default": "mdi:decimal"
+      }
+    },
+    "select": {
+      "rotation": {
+        "default": "mdi:rotate-right"
+      }
+    },
+    "switch": {
+      "lock_crop": {
+        "default": "mdi:lock-open-variant",
+        "state": {
+          "on": "mdi:lock"
+        }
+      }
+    },
+    "text": {
+      "teach": {
+        "default": "mdi:form-textbox"
+      }
+    },
+    "button": {
+      "forget": {
+        "default": "mdi:backup-restore"
+      }
     }
   }
 }

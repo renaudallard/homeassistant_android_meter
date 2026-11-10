@@ -34,10 +34,12 @@ from typing import Any
 from unittest.mock import patch
 from urllib.parse import quote
 
+import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.network import NoURLAvailableError
 from homeassistant.setup import async_setup_component
@@ -111,7 +113,7 @@ async def _open(hass: HomeAssistant, entry: Any, step: str) -> dict[str, Any]:
     """The options menu, then one of its forms."""
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] is FlowResultType.MENU
-    assert result["menu_options"] == ["teach", "counter", "phone"]
+    assert result["menu_options"] == ["teach", "phone"]
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"next_step_id": step}
     )
@@ -129,15 +131,48 @@ async def _step(
     return dict(result)
 
 
+CONTROLS = {
+    "digits": "number.gas_meter_drums",
+    "decimals": "number.gas_meter_decimal_drums",
+    "x": "number.gas_meter_crop_left",
+    "y": "number.gas_meter_crop_top",
+    "width": "number.gas_meter_crop_width",
+    "height": "number.gas_meter_crop_height",
+    "gap": "number.gas_meter_gap_between_windows",
+}
+
+
+async def _crop(hass: HomeAssistant, **fields: Any) -> None:
+    """Set crop and counter options with the controls of the device page."""
+    if "rotation" in fields:
+        await hass.services.async_call(
+            "select",
+            "select_option",
+            {"entity_id": "select.gas_meter_rotation", "option": str(fields["rotation"])},
+            blocking=True,
+        )
+    for key, entity_id in CONTROLS.items():
+        if key in fields:
+            await hass.services.async_call(
+                "number",
+                "set_value",
+                {"entity_id": entity_id, "value": fields[key]},
+                blocking=True,
+            )
+    await hass.async_block_till_done()
+
+
 async def _options(hass: HomeAssistant, entry: Any, **fields: Any) -> dict[str, Any]:
-    """Crop fields through Crop and counter, then the reading through Teach."""
-    counter = {key: value for key, value in fields.items() if key not in ("reading", "forget")}
+    """Crop fields through the device controls, then the reading through
+    Teach. An error comes back the way a form shows one."""
+    crop = {key: value for key, value in fields.items() if key not in ("reading", "forget")}
     teach = {key: value for key, value in fields.items() if key in ("reading", "forget")}
     result: dict[str, Any] = {}
-    if counter:
-        result = await _step(hass, entry, "counter", {**counter, "done": True})
-        if result["type"] is not FlowResultType.CREATE_ENTRY:
-            return result
+    if crop:
+        try:
+            await _crop(hass, **crop)
+        except ServiceValidationError as err:
+            return {"type": "error", "errors": {"base": err.translation_key}}
     if teach:
         result = await _step(hass, entry, "teach", teach)
     return result
@@ -264,6 +299,13 @@ async def test_the_reading_survives_a_restart_and_removal_cleans_up(
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"
     assert hass.states.get("sensor.gas_meter_learnt_digits").state != "0"
 
+    assert hass.states.get("switch.gas_meter_lock_the_crop").state == "on"
+    result = await _options(hass, entry, **{**CROP, "x": CROP["x"] + 1})
+    assert result["errors"] == {"base": "crop_locked"}
+    assert hass.states.get("sensor.gas_meter_learnt_digits").state != "0"
+    await hass.services.async_call(
+        "switch", "turn_off", {"entity_id": "switch.gas_meter_lock_the_crop"}, blocking=True
+    )
     await _options(hass, entry, **{**CROP, "x": CROP["x"] + 1})
     assert hass.states.get("sensor.gas_meter_learnt_digits").state == "0"
     assert hass.states.get("sensor.gas_meter_status").state == "untaught"
@@ -346,29 +388,53 @@ async def test_a_reading_is_asked_in_repairs(
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"
 
 
-async def test_the_crop_screen_shows_each_try(
-    hass: HomeAssistant, hass_client_no_auth: Any
-) -> None:
+async def test_the_device_controls(hass: HomeAssistant, hass_client_no_auth: Any) -> None:
     entry = await _entry(hass)
     await _post(await hass_client_no_auth(), entry, synth.frame(1234567, LAYOUT, random.Random(8)))
-    result = await _open(hass, entry, "counter")
-    first = result["description_placeholders"]["frame_image"]
-    assert first.startswith("![](/api/image_proxy/image.gas_meter_frame?token=")
-    assert result["description_placeholders"]["frame"] == "640 x 480"
+    width = hass.states.get("number.gas_meter_crop_width")
+    assert width.attributes["max"] == 640
+    assert width.attributes["mode"] == "slider"
+    assert hass.states.get("number.gas_meter_crop_height").attributes["max"] == 480
+    assert hass.states.get("number.gas_meter_drums").attributes["mode"] == "box"
 
-    moved = {**CROP, "x": CROP["x"] + 2}
-    result = await hass.config_entries.options.async_configure(result["flow_id"], moved)
-    await hass.async_block_till_done()
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "counter"
-    assert entry.options["x"] == CROP["x"] + 2
-    again = result["description_placeholders"]["frame_image"]
-    assert again != first
-    assert f"crop=0-{CROP['x'] + 2}-" in again
+    shown = hass.states.get("image.gas_meter_frame").state
+    await _crop(hass, **CROP)
+    assert entry.options["width"] == CROP["width"]
+    assert hass.states.get("number.gas_meter_crop_left").state == str(float(CROP["x"]))
+    assert hass.states.get("image.gas_meter_frame").state != shown
+    assert hass.states.get("number.gas_meter_gap_between_windows").attributes["max"] == 640 // 8
 
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {**CROP, "done": True}
+    await _crop(hass, rotation=90)
+    assert hass.states.get("number.gas_meter_crop_width").attributes["max"] == 480
+    assert entry.options["width"] == 0
+    await _crop(hass, rotation=0)
+    await _crop(hass, **CROP)
+
+    with pytest.raises(ServiceValidationError) as err:
+        await hass.services.async_call(
+            "text",
+            "set_value",
+            {"entity_id": "text.gas_meter_teach_the_reading", "value": "123456.789"},
+            blocking=True,
+        )
+    assert err.value.translation_key == "bad_reading"
+    await hass.services.async_call(
+        "text",
+        "set_value",
+        {"entity_id": "text.gas_meter_teach_the_reading", "value": "01234.567"},
+        blocking=True,
     )
     await hass.async_block_till_done()
-    assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options["x"] == CROP["x"]
+    assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"
+    assert hass.states.get("switch.gas_meter_lock_the_crop").state == "on"
+    assert hass.states.get("text.gas_meter_teach_the_reading").state == ""
+    with pytest.raises(ServiceValidationError) as err:
+        await _crop(hass, x=CROP["x"] + 5)
+    assert err.value.translation_key == "crop_locked"
+
+    await hass.services.async_call(
+        "button", "press", {"entity_id": "button.gas_meter_forget_the_digits_learnt"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.gas_meter_learnt_digits").state == "0"
+    assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"

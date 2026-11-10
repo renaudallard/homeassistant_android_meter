@@ -137,18 +137,19 @@ Android SDK platform 37).
 4. **In the app**, pick the camera (the list shows how close each one
    focuses) and press **Take one picture**. The picture is shown in the app
    and sent to Home Assistant.
-5. **In Home Assistant**, open the integration's options (Configure) and
-   choose **Crop and counter**. The screen shows the last picture; set:
+5. **In Home Assistant**, open the meter's device page. Next to the
+   **Frame** image, the Configuration section has the controls for the
+   crop:
    - **Rotation**, so the digits stand upright;
-   - **Crop left, top, width and height**, in pixels of the turned picture,
-     from the top left corner of the first window to the bottom right
-     corner of the last one, windows only;
+   - **Crop left, top, width and height**, sliders over the picture, from
+     the top left corner of the first window to the bottom right corner of
+     the last one, windows only;
    - **Gap between windows**, the width of the housing between two windows;
    - **Drums** and **Decimal drums** (for example 8 and 3 for 00123.456).
 
-   Save: the screen comes back with each window outlined on the picture.
-   Adjust and save until every outline sits on its window, then tick
-   **Done** and save to close.
+   Each change redraws the Frame image with every window outlined: move
+   the sliders until each outline sits on its window. Turning the picture
+   starts the crop anew.
 6. **Teach the reading**, see below. Settings also shows a Repairs notice,
    **Android Meter needs a reading**, until it is done.
 7. **Start** the app. It keeps taking pictures with the screen off, as a
@@ -162,30 +163,44 @@ The integration learns the digits of your meter from the readings you type
 in, then goes on learning on its own as the meter turns.
 
 1. Open Configure > **Teach the reading**, or press **Fix** on the Repairs
-   notice. The screen shows the last picture with each drum outlined.
+   notice. The screen shows the last picture with each drum outlined. The
+   **Teach the reading** box on the device page does the same.
 2. Type the reading the picture shows, every drum from left to right, for
    example `01234.567`. A drum caught between two digits counts as the lower
    one.
-3. Save. Every drum showing a whole digit is learnt, and the status turns
-   to OK.
+3. Save. Every drum showing a whole digit is learnt, the status turns to
+   OK, and **Lock the crop** turns on.
 
 The screen lists the digits learnt and the ones still to learn, and the
 **Learnt digits** sensor counts them. Teaching again later, when the meter
 shows other digits, gets all ten sooner. **Forget the digits learnt**
 starts over, for instance after a wrong reading was typed.
 
-## Options
+A change of crop forgets the digits learnt, since they no longer match the
+windows. **Lock the crop** keeps a slip on the device page from doing that:
+while it is on, the crop and counter controls refuse changes. Turn it off to
+move the crop, then teach the reading again.
 
-Configure opens a menu of three screens.
+## Settings
+
+On the meter's device page:
+
+| Control | Meaning |
+|---|---|
+| Rotation | Clockwise turn that makes the digits upright. |
+| Crop left, top, width, height | The windows, in pixels of the turned picture. |
+| Gap between windows | Housing between two windows, in pixels. |
+| Drums, Decimal drums | How many drums, and how many after the decimal point. |
+| Lock the crop | On, the controls above refuse changes. Turns on when a reading is taught. |
+| Teach the reading | Type the reading the Frame image shows to teach it. |
+| Forget the digits learnt | Start learning again. |
+
+In Configure, a menu of two screens:
 
 | Screen | Options |
 |---|---|
-| Teach the reading | The reading the last picture shows; Forget the digits learnt. |
-| Crop and counter | Rotation (clockwise turn that makes the digits upright); crop left, top, width and height, in pixels of the turned picture; gap between windows; drums and decimal drums. |
+| Teach the reading | The reading the last picture shows, with the picture; Forget the digits learnt. |
 | Phone and pairing | The pairing QR code; interval (10 to 3600 s, 60 by default); torch; largest flow (6 m³/h for a G4, 10 for a G6). |
-
-Changing the rotation, crop, gap or number of drums forgets the digits
-learnt, since they no longer match the windows; teach the reading again.
 
 ## What you get
 
@@ -194,14 +209,14 @@ learnt, since they no longer match the windows; teach the reading again.
 | Reading | The meter in m³, device class gas, state class `total_increasing`. Use it in the Energy dashboard as gas consumption. |
 | Status | How the last picture went (see below). |
 | Learnt digits | How many of the ten digits are known. |
-| Frame | The last picture, upright, with each window outlined: green when it was read, orange when it was not, `~` under a drum caught between two digits. |
+| Frame | The last picture, upright, with each window outlined: green when it was read, orange when it was not, `~` under a drum caught between two digits. Redrawn on every change of crop. |
 
 | Status | Meaning |
 |---|---|
 | Waiting for the phone | No picture since Home Assistant started. |
 | Phone offline | No picture for three intervals, and at least five minutes. |
 | Unreadable picture | The phone sent something that is not a JPEG. |
-| Crop not set | Set the crop in the options. |
+| Crop not set | Set the crop with the controls on the device page. |
 | Crop outside the picture | The crop does not fit the picture. |
 | Reading to teach | Teach the reading (Configure > Teach the reading, or the Repairs notice). |
 | Digits not recognised | No drum at rest matched a known digit: light, focus, or the phone moved. |

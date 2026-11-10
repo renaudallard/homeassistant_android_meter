@@ -41,7 +41,15 @@ from homeassistant.helpers.storage import Store
 from .const import CONF_WEBHOOK_ID, DOMAIN, STORAGE_VERSION
 from .meter import Meter, teach_issue_id
 
-PLATFORMS = [Platform.IMAGE, Platform.SENSOR]
+PLATFORMS = [
+    Platform.BUTTON,
+    Platform.IMAGE,
+    Platform.NUMBER,
+    Platform.SELECT,
+    Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.TEXT,
+]
 
 type MeterConfigEntry = ConfigEntry[Meter]
 

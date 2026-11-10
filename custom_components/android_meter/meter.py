@@ -201,7 +201,9 @@ class Meter:
         self.entry_id = entry_id
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry_id}")
         self._lock = asyncio.Lock()
+        self.options: dict[str, Any] = {**DEFAULTS, **options}
         self.settings = Settings.from_options(options)
+        self.locked = False
         self.patches = recognizer.Patches()
         self.reading: Decimal | None = None
         self.ceiling: Decimal | None = None
@@ -220,6 +222,7 @@ class Meter:
             self.reading = _decimal(data.get("reading"))
             self.ceiling = _decimal(data.get("ceiling"))
             self.read_at = _time(data.get("read_at"))
+            self.locked = data.get("locked") is True
             if data.get("shape") == self.settings.shape():
                 self.patches = recognizer.Patches.load(data.get("patches"))
         if self.reading is None:
@@ -245,6 +248,7 @@ class Meter:
             "ceiling": None if self.ceiling is None else str(self.ceiling),
             "read_at": None if self.read_at is None else self.read_at.isoformat(),
             "shape": self.settings.shape(),
+            "locked": self.locked,
             "patches": self.patches.dump(),
         }
 
@@ -386,7 +390,8 @@ class Meter:
         """Take new options, and maybe a reading of the last frame to learn.
 
         Changing the crop, or asking to forget, drops what was learnt.
-        Nothing changes when the reading cannot be taught.
+        Nothing changes when the reading cannot be taught. A reading taught
+        locks the crop, so that a slip on the device page cannot undo it.
         """
         async with self._lock:
             settings = Settings.from_options(options)
@@ -405,6 +410,7 @@ class Meter:
                     raise TeachError("crop_outside")
                 if learnt == 0:
                     raise TeachError("nothing_at_rest")
+            self.options = {**DEFAULTS, **options}
             self.settings = settings
             self.patches = patches
             if reading is not None:
@@ -413,11 +419,19 @@ class Meter:
                 self.read_at = self.frame_at
                 self.status = STATUS_OK
                 self.last = None
+                self.locked = True
             elif fresh:
                 self.status = STATUS_UNTAUGHT if settings.geometry is not None else STATUS_NO_CROP
                 self.last = None
             self._save()
             self._arm_silence()
+        self._notify()
+
+    @callback
+    def async_set_locked(self, locked: bool) -> None:
+        """Lock the crop against changes, or let it be changed."""
+        self.locked = locked
+        self._save()
         self._notify()
 
     async def async_webhook(

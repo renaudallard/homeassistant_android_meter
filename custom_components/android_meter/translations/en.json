@@ -10,7 +10,7 @@
       },
       "pair": {
         "title": "Pair the phone",
-        "description": "**Pair the phone with this code**\n\n1. On the phone, open the camera app and point it at the QR code below.\n2. Tap **Share** on the text the camera shows and pick **Android Meter**. If the camera only offers Copy, copy it, open Android Meter and press **Paste the pairing link**.\n3. Android Meter asks whether to send the pictures to this Home Assistant. Check the address and tap **Use it**.\n\nTo type the address instead: `{webhook_url}`\n\nThe phone must be on the same network as Home Assistant. Once the first picture has arrived, open this integration's options to set the crop and teach it the reading.",
+        "description": "**Pair the phone with this code**\n\n1. On the phone, open the camera app and point it at the QR code below.\n2. Tap **Share** on the text the camera shows and pick **Android Meter**. If the camera only offers Copy, copy it, open Android Meter and press **Paste the pairing link**.\n3. Android Meter asks whether to send the pictures to this Home Assistant. Check the address and tap **Use it**.\n\nTo type the address instead: `{webhook_url}`\n\nThe phone must be on the same network as Home Assistant. Once the first picture has arrived, set the crop with the controls on the meter's device page, next to the Frame image, then teach it the reading.",
         "data": {
           "qr_code": "Pairing code"
         },
@@ -26,7 +26,6 @@
         "title": "Meter settings",
         "menu_options": {
           "teach": "Teach the reading",
-          "counter": "Crop and counter",
           "phone": "Phone and pairing"
         }
       },
@@ -40,28 +39,6 @@
         "data_description": {
           "reading": "Every drum, decimals included, with a point or a comma before the decimals.",
           "forget": "Start learning again, for instance after a wrong reading was taught. Changing the crop forgets them anyway."
-        }
-      },
-      "counter": {
-        "title": "Crop and counter",
-        "description": "{frame_image}\n\nPlace the crop on the picture above ({frame} pixels): from the top left corner of the first drum window to the bottom right corner of the last one, the windows only. Each save outlines the windows on the picture again, so adjust and save until every outline sits on its window, then tick Done. Changing the crop forgets the digits learnt.",
-        "data": {
-          "rotation": "Rotation",
-          "x": "Crop left",
-          "y": "Crop top",
-          "width": "Crop width",
-          "height": "Crop height",
-          "gap": "Gap between windows",
-          "digits": "Drums",
-          "decimals": "Decimal drums",
-          "done": "Done"
-        },
-        "data_description": {
-          "rotation": "How far to turn the picture clockwise so the digits stand upright. The crop is measured on the turned picture.",
-          "gap": "Width of the housing between two windows, in pixels of the picture.",
-          "digits": "Number of drums, decimal ones included.",
-          "decimals": "Drums after the decimal point, usually red.",
-          "done": "Tick once every outline sits on its window, and save to close."
         }
       },
       "phone": {
@@ -84,22 +61,10 @@
     "error": {
       "bad_reading": "This reading does not fit the counter: check the number of drums and decimal drums.",
       "crop_outside": "The crop goes past the edge of the last frame.",
-      "windows_too_small": "The windows are too small: each needs at least 4 pixels across and 8 down.",
-      "too_many_decimals": "There cannot be more decimal drums than drums.",
       "no_crop": "Set the crop before teaching a reading.",
       "no_frame": "No frame has arrived yet to teach the reading from.",
       "nothing_at_rest": "No drum shows a whole digit on the last frame. Wait for the meter to stop and try again.",
       "no_reading": "Type the reading the picture shows, or tick Forget the digits learnt."
-    }
-  },
-  "selector": {
-    "rotation": {
-      "options": {
-        "0": "None",
-        "90": "90°",
-        "180": "180°",
-        "270": "270°"
-      }
     }
   },
   "entity": {
@@ -128,6 +93,55 @@
       },
       "learnt_digits": {
         "name": "Learnt digits"
+      }
+    },
+    "number": {
+      "crop_left": {
+        "name": "Crop left"
+      },
+      "crop_top": {
+        "name": "Crop top"
+      },
+      "crop_width": {
+        "name": "Crop width"
+      },
+      "crop_height": {
+        "name": "Crop height"
+      },
+      "gap": {
+        "name": "Gap between windows"
+      },
+      "digits": {
+        "name": "Drums"
+      },
+      "decimals": {
+        "name": "Decimal drums"
+      }
+    },
+    "select": {
+      "rotation": {
+        "name": "Rotation",
+        "state": {
+          "0": "None",
+          "90": "90°",
+          "180": "180°",
+          "270": "270°"
+        }
+      }
+    },
+    "switch": {
+      "lock_crop": {
+        "name": "Lock the crop"
+      }
+    },
+    "text": {
+      "teach": {
+        "name": "Teach the reading"
+      }
+    },
+    "button": {
+      "forget": {
+        "name": "Forget the digits learnt"
       }
     }
   },
@@ -161,6 +175,32 @@
           "not_loaded": "The meter is not running. Check the integration and try again."
         }
       }
+    }
+  },
+  "exceptions": {
+    "crop_locked": {
+      "message": "The crop is locked, so that a slip cannot forget the digits learnt. Turn off Lock the crop to change it."
+    },
+    "crop_outside": {
+      "message": "The crop goes past the edge of the last frame."
+    },
+    "windows_too_small": {
+      "message": "The windows are too small: each needs at least 4 pixels across and 8 down."
+    },
+    "too_many_decimals": {
+      "message": "There cannot be more decimal drums than drums."
+    },
+    "bad_reading": {
+      "message": "This reading does not fit the counter: check the number of drums and decimal drums."
+    },
+    "no_crop": {
+      "message": "Set the crop before teaching a reading."
+    },
+    "no_frame": {
+      "message": "No frame has arrived yet to teach the reading from."
+    },
+    "nothing_at_rest": {
+      "message": "No drum shows a whole digit on the last frame. Wait for the meter to stop and try again."
     }
   }
 }

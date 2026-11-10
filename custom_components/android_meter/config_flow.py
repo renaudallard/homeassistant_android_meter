@@ -28,8 +28,8 @@
 Setting up only names the meter and hands out the webhook address the app
 needs, as a QR code the phone's camera reads and shares to the app, and
 as text. Everything else lives in the options, a menu set once a frame has
-come in and can be looked at: the reading to teach, the crop and counter,
-and the phone.
+come in: the reading to teach, and the phone. The crop and the counter
+are set with controls on the device page, next to the Frame image.
 """
 
 from __future__ import annotations
@@ -50,50 +50,22 @@ from homeassistant.helpers.selector import (
     QrCodeSelector,
     QrCodeSelectorConfig,
     QrErrorCorrectionLevel,
-    SelectSelector,
-    SelectSelectorConfig,
-    SelectSelectorMode,
 )
 
 from . import MeterConfigEntry
 from .const import (
-    CONF_DECIMALS,
-    CONF_DIGITS,
-    CONF_DONE,
-    CONF_GAP,
-    CONF_HEIGHT,
     CONF_INTERVAL,
     CONF_MAX_FLOW,
     CONF_QR_CODE,
-    CONF_ROTATION,
     CONF_TORCH,
     CONF_WEBHOOK_ID,
-    CONF_WIDTH,
-    CONF_X,
-    CONF_Y,
     DEFAULT_NAME,
     DEFAULTS,
     DOMAIN,
-    MAX_DECIMALS,
-    MAX_DIGITS,
     MAX_INTERVAL,
     MIN_INTERVAL,
-    ROTATIONS,
 )
-from .meter import Settings, frame_error
-from .teach import async_teach, frame_picture, teach_placeholders, teach_schema
-
-# The fields of the crop and counter form, all whole numbers.
-_COUNTER = (
-    CONF_ROTATION,
-    CONF_X,
-    CONF_Y,
-    CONF_WIDTH,
-    CONF_HEIGHT,
-    CONF_GAP,
-    CONF_DIGITS,
-    CONF_DECIMALS,
-)
+from .teach import async_teach, teach_placeholders, teach_schema
 
 
 def _webhook_url(hass: HomeAssistant, webhook_id: str) -> str:
@@ -172,10 +144,11 @@ class AndroidMeterConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class AndroidMeterOptionsFlow(OptionsFlow):
-    """A menu: teach the reading, set the crop and counter, or the phone."""
+    """A menu: teach the reading, or the phone and pairing. The crop and
+    the counter are controls on the device page."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        return self.async_show_menu(step_id="init", menu_options=["teach", "counter", "phone"])
+        return self.async_show_menu(step_id="init", menu_options=["teach", "phone"])
 
     def _current(self) -> dict[str, Any]:
         return {**DEFAULTS, **self.config_entry.options}
@@ -195,69 +168,6 @@ class AndroidMeterOptionsFlow(OptionsFlow):
             data_schema=teach_schema(),
             errors=errors,
             description_placeholders=teach_placeholders(self.hass, entry.entry_id, meter),
-        )
-
-    async def async_step_counter(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Where the drums are in the picture, and how many.
-
-        Each save applies the crop, stores it, and shows the screen again
-        with the picture outlined anew, until the user ticks Done.
-        """
-        entry: MeterConfigEntry = self.config_entry
-        meter = entry.runtime_data
-        errors: dict[str, str] = {}
-        current = self._current()
-        if user_input is not None:
-            options = {**current, **{key: int(user_input[key]) for key in _COUNTER}}
-            error = frame_error(Settings.from_options(options), meter.frame_size)
-            if error is None:
-                await meter.async_configure(options)
-                if user_input.get(CONF_DONE):
-                    return self.async_create_entry(data=options)
-                self.hass.config_entries.async_update_entry(entry, options=options)
-            else:
-                errors["base"] = error
-            current = options
-        size = meter.frame_size
-        schema = probatio.Schema(
-            {
-                probatio.Required(
-                    CONF_ROTATION, default=str(current[CONF_ROTATION])
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[str(r) for r in ROTATIONS],
-                        mode=SelectSelectorMode.DROPDOWN,
-                        translation_key=CONF_ROTATION,
-                    )
-                ),
-                probatio.Required(CONF_X, default=current[CONF_X]): _number(0, 20000, unit="px"),
-                probatio.Required(CONF_Y, default=current[CONF_Y]): _number(0, 20000, unit="px"),
-                probatio.Required(CONF_WIDTH, default=current[CONF_WIDTH]): _number(
-                    0, 20000, unit="px"
-                ),
-                probatio.Required(CONF_HEIGHT, default=current[CONF_HEIGHT]): _number(
-                    0, 20000, unit="px"
-                ),
-                probatio.Required(CONF_GAP, default=current[CONF_GAP]): _number(0, 2000, unit="px"),
-                probatio.Required(CONF_DIGITS, default=current[CONF_DIGITS]): _number(
-                    1, MAX_DIGITS
-                ),
-                probatio.Required(CONF_DECIMALS, default=current[CONF_DECIMALS]): _number(
-                    0, MAX_DECIMALS
-                ),
-                probatio.Optional(CONF_DONE, default=False): BooleanSelector(),
-            }
-        )
-        return self.async_show_form(
-            step_id="counter",
-            data_schema=schema,
-            errors=errors,
-            description_placeholders={
-                "frame_image": frame_picture(self.hass, entry.entry_id, meter),
-                "frame": "-" if size is None else f"{size[0]} x {size[1]}",
-            },
         )
 
     async def async_step_phone(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

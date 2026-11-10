@@ -49,7 +49,6 @@ CONF_MAX_FLOW: Final = "max_flow"
 CONF_READING: Final = "reading"
 CONF_FORGET: Final = "forget"
 CONF_QR_CODE: Final = "qr_code"
-CONF_DONE: Final = "done"
 
 DEFAULT_NAME: Final = "Gas meter"
 

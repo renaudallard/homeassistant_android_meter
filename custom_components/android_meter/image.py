@@ -30,6 +30,7 @@ from __future__ import annotations
 from homeassistant.components.image import ImageEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from . import MeterConfigEntry, recognizer
 from .entity import MeterEntity
@@ -53,21 +54,32 @@ class FrameImage(MeterEntity, ImageEntity):
         MeterEntity.__init__(self, meter, entry, "frame")
         ImageEntity.__init__(self, hass)
         self._attr_image_last_updated = meter.frame_at
+        self._shown = self._key()
         self._drawn: tuple[object, bytes] | None = None
+
+    def _key(self) -> object:
+        """What the drawing depends on: the frame, the crop and the read."""
+        meter = self.meter
+        return (meter.frame_at, meter.settings.geometry, meter.last)
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self.meter.async_add_listener(self._updated))
 
     @callback
     def _updated(self) -> None:
-        self._attr_image_last_updated = self.meter.frame_at
+        """Mark the image updated whenever its drawing changes, a new crop
+        included, so that the device page shows it again."""
+        key = self._key()
+        if key != self._shown:
+            self._shown = key
+            self._attr_image_last_updated = dt_util.utcnow()
         self.async_write_ha_state()
 
     async def async_image(self) -> bytes | None:
         meter = self.meter
         if meter.frame is None:
             return None
-        key = (meter.frame_at, meter.settings.geometry, meter.last)
+        key = self._key()
         if self._drawn is not None and self._drawn[0] == key:
             return self._drawn[1]
         try:
