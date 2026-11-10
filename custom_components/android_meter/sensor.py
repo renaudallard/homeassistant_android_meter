@@ -55,6 +55,7 @@ async def async_setup_entry(
             ReadingSensor(meter, entry, "reading"),
             StatusSensor(meter, entry, "status"),
             LearntSensor(meter, entry, "learnt_digits"),
+            ToLearnSensor(meter, entry, "digits_to_learn"),
         ]
     )
 
@@ -98,3 +99,13 @@ class LearntSensor(MeterEntity, SensorEntity):
     @property
     def native_value(self) -> int:
         return len(self.meter.known())
+
+
+class ToLearnSensor(MeterEntity, SensorEntity):
+    """The digits still to learn, so that a drum showing one is known to be
+    left out and teaching again when one shows learns it at once."""
+
+    @property
+    def native_value(self) -> str:
+        known = self.meter.known()
+        return " ".join(str(digit) for digit in range(10) if digit not in known) or "none"

@@ -205,6 +205,7 @@ async def test_a_frame_is_read_once_taught(
     result = await _options(hass, entry, **CROP, reading="01234,567")
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert hass.states.get("sensor.gas_meter_learnt_digits").state == "10"
+    assert hass.states.get("sensor.gas_meter_digits_to_learn").state == "none"
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"
 
     freezer.tick(timedelta(seconds=60))
@@ -478,6 +479,7 @@ async def test_the_device_controls(hass: HomeAssistant, hass_client_no_auth: Any
     )
     await hass.async_block_till_done()
     assert hass.states.get("sensor.gas_meter_learnt_digits").state == "0"
+    assert hass.states.get("sensor.gas_meter_digits_to_learn").state == "0 1 2 3 4 5 6 7 8 9"
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"
 
 

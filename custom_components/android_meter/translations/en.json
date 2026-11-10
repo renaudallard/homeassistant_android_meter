@@ -93,6 +93,9 @@
       },
       "learnt_digits": {
         "name": "Learnt digits"
+      },
+      "digits_to_learn": {
+        "name": "Digits to learn"
       }
     },
     "number": {

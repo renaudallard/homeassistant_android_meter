@@ -183,10 +183,11 @@ in, then goes on learning on its own as the meter turns.
 3. Save. Every drum of the crop showing a whole digit is learnt, the
    status turns to OK, and **Lock the crop** turns on.
 
-The screen lists the digits learnt and the ones still to learn, and the
-**Learnt digits** sensor counts them. Teaching again later, when the meter
-shows other digits, gets all ten sooner. **Forget the digits learnt**
-starts over, for instance after a wrong reading was typed.
+The screen lists the digits learnt and the ones still to learn. On the
+device page, the **Learnt digits** sensor counts them and **Digits to
+learn** lists the ones missing. Teaching again later, when the meter shows
+other digits, gets all ten sooner. **Forget the digits learnt** starts
+over, for instance after a wrong reading was typed.
 
 A change of crop forgets the digits learnt, since they no longer match the
 windows. **Lock the crop** keeps a slip from doing that: while it is on, the
@@ -222,6 +223,7 @@ In Configure, a menu of two screens:
 | Reading | The meter in m³, device class gas, state class `total_increasing`. Use it in the Energy dashboard as gas consumption. |
 | Status | How the last picture went (see below). |
 | Learnt digits | How many of the ten digits are known. |
+| Digits to learn | The digits not learnt yet, for example `2 3 5 7 9`, or `none`. |
 | Frame | The last picture, upright, with each window outlined: green when it was read, orange when it was not, `~` under a drum caught between two digits. Redrawn on every change of crop. |
 
 | Status | Meaning |
