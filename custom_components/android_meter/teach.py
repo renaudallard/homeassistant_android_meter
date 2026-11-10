@@ -27,7 +27,7 @@
 
 It shows the last picture as the Frame image draws it, with the drums
 outlined, which digits are learnt and which are still to learn, and asks
-for the reading the picture shows.
+for the reading the picture shows. The crop screen shows the same picture.
 """
 
 from __future__ import annotations
@@ -59,19 +59,31 @@ def _example(digits: int, decimals: int) -> str:
     return f"{whole}.{figures[digits - decimals :]}" if decimals else whole
 
 
-def teach_placeholders(hass: HomeAssistant, entry_id: str, meter: Meter) -> dict[str, str]:
-    """The picture, the digits learnt and an example of a reading."""
-    picture = ""
+def frame_picture(hass: HomeAssistant, entry_id: str, meter: Meter) -> str:
+    """The Frame image as markdown, or nothing before the first picture.
+
+    The link is the image entity's own, with its short lived token. The
+    crop is added to it so that a browser shows the picture again, with
+    the new outlines, once the crop changed.
+    """
     entity_id = er.async_get(hass).async_get_entity_id("image", DOMAIN, f"{entry_id}_frame")
     state = hass.states.get(entity_id) if entity_id is not None else None
-    if meter.frame is not None and state is not None:
-        url = state.attributes.get("entity_picture")
-        if isinstance(url, str) and url.startswith("/api/image_proxy/"):
-            picture = f"![]({url})"
+    if meter.frame is None or state is None:
+        return ""
+    url = state.attributes.get("entity_picture")
+    if not isinstance(url, str) or not url.startswith("/api/image_proxy/"):
+        return ""
+    crop = "-".join(str(n) for n in meter.settings.shape() or [])
+    taken = "" if meter.frame_at is None else str(int(meter.frame_at.timestamp()))
+    return f"![]({url}&crop={crop}&at={taken})"
+
+
+def teach_placeholders(hass: HomeAssistant, entry_id: str, meter: Meter) -> dict[str, str]:
+    """The picture, the digits learnt and an example of a reading."""
     known = meter.known()
     settings = meter.settings
     return {
-        "frame_image": picture,
+        "frame_image": frame_picture(hass, entry_id, meter),
         "known": " ".join(str(d) for d in known) or "-",
         "unknown": " ".join(str(d) for d in range(10) if d not in known) or "-",
         "example": _example(settings.digits, settings.decimals),

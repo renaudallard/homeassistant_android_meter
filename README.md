@@ -137,9 +137,8 @@ Android SDK platform 37).
 4. **In the app**, pick the camera (the list shows how close each one
    focuses) and press **Take one picture**. The picture is shown in the app
    and sent to Home Assistant.
-5. **In Home Assistant**, open the **Frame** image of the new device: it
-   shows the last picture. Open the integration's options (Configure),
-   choose **Crop and counter** and set:
+5. **In Home Assistant**, open the integration's options (Configure) and
+   choose **Crop and counter**. The screen shows the last picture; set:
    - **Rotation**, so the digits stand upright;
    - **Crop left, top, width and height**, in pixels of the turned picture,
      from the top left corner of the first window to the bottom right
@@ -147,8 +146,9 @@ Android SDK platform 37).
    - **Gap between windows**, the width of the housing between two windows;
    - **Drums** and **Decimal drums** (for example 8 and 3 for 00123.456).
 
-   Save, take another picture and check the Frame image: each window is
-   outlined. Adjust until every outline sits on its window.
+   Save: the screen comes back with each window outlined on the picture.
+   Adjust and save until every outline sits on its window, then tick
+   **Done** and save to close.
 6. **Teach the reading**, see below. Settings also shows a Repairs notice,
    **Android Meter needs a reading**, until it is done.
 7. **Start** the app. It keeps taking pictures with the screen off, as a

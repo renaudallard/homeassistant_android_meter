@@ -59,6 +59,7 @@ from . import MeterConfigEntry
 from .const import (
     CONF_DECIMALS,
     CONF_DIGITS,
+    CONF_DONE,
     CONF_GAP,
     CONF_HEIGHT,
     CONF_INTERVAL,
@@ -80,7 +81,7 @@ from .const import (
     ROTATIONS,
 )
 from .meter import Settings, frame_error
-from .teach import async_teach, teach_placeholders, teach_schema
+from .teach import async_teach, frame_picture, teach_placeholders, teach_schema
 
 # The fields of the crop and counter form, all whole numbers.
 _COUNTER = (
@@ -199,7 +200,11 @@ class AndroidMeterOptionsFlow(OptionsFlow):
     async def async_step_counter(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Where the drums are in the picture, and how many."""
+        """Where the drums are in the picture, and how many.
+
+        Each save applies the crop, stores it, and shows the screen again
+        with the picture outlined anew, until the user ticks Done.
+        """
         entry: MeterConfigEntry = self.config_entry
         meter = entry.runtime_data
         errors: dict[str, str] = {}
@@ -209,8 +214,11 @@ class AndroidMeterOptionsFlow(OptionsFlow):
             error = frame_error(Settings.from_options(options), meter.frame_size)
             if error is None:
                 await meter.async_configure(options)
-                return self.async_create_entry(data=options)
-            errors["base"] = error
+                if user_input.get(CONF_DONE):
+                    return self.async_create_entry(data=options)
+                self.hass.config_entries.async_update_entry(entry, options=options)
+            else:
+                errors["base"] = error
             current = options
         size = meter.frame_size
         schema = probatio.Schema(
@@ -239,6 +247,7 @@ class AndroidMeterOptionsFlow(OptionsFlow):
                 probatio.Required(CONF_DECIMALS, default=current[CONF_DECIMALS]): _number(
                     0, MAX_DECIMALS
                 ),
+                probatio.Optional(CONF_DONE, default=False): BooleanSelector(),
             }
         )
         return self.async_show_form(
@@ -246,6 +255,7 @@ class AndroidMeterOptionsFlow(OptionsFlow):
             data_schema=schema,
             errors=errors,
             description_placeholders={
+                "frame_image": frame_picture(self.hass, entry.entry_id, meter),
                 "frame": "-" if size is None else f"{size[0]} x {size[1]}",
             },
         )

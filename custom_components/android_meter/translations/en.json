@@ -44,7 +44,7 @@
       },
       "counter": {
         "title": "Crop and counter",
-        "description": "Last picture: {frame} pixels. Look at the Frame image entity to place the crop: from the top left corner of the first drum window to the bottom right corner of the last one, the windows only. Each window is outlined there once saved. Changing the crop forgets the digits learnt.",
+        "description": "{frame_image}\n\nPlace the crop on the picture above ({frame} pixels): from the top left corner of the first drum window to the bottom right corner of the last one, the windows only. Each save outlines the windows on the picture again, so adjust and save until every outline sits on its window, then tick Done. Changing the crop forgets the digits learnt.",
         "data": {
           "rotation": "Rotation",
           "x": "Crop left",
@@ -53,13 +53,15 @@
           "height": "Crop height",
           "gap": "Gap between windows",
           "digits": "Drums",
-          "decimals": "Decimal drums"
+          "decimals": "Decimal drums",
+          "done": "Done"
         },
         "data_description": {
           "rotation": "How far to turn the picture clockwise so the digits stand upright. The crop is measured on the turned picture.",
           "gap": "Width of the housing between two windows, in pixels of the picture.",
           "digits": "Number of drums, decimal ones included.",
-          "decimals": "Drums after the decimal point, usually red."
+          "decimals": "Drums after the decimal point, usually red.",
+          "done": "Tick once every outline sits on its window, and save to close."
         }
       },
       "phone": {

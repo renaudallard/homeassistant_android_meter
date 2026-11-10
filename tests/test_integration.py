@@ -135,7 +135,7 @@ async def _options(hass: HomeAssistant, entry: Any, **fields: Any) -> dict[str, 
     teach = {key: value for key, value in fields.items() if key in ("reading", "forget")}
     result: dict[str, Any] = {}
     if counter:
-        result = await _step(hass, entry, "counter", counter)
+        result = await _step(hass, entry, "counter", {**counter, "done": True})
         if result["type"] is not FlowResultType.CREATE_ENTRY:
             return result
     if teach:
@@ -344,3 +344,31 @@ async def test_a_reading_is_asked_in_repairs(
     await hass.async_block_till_done()
     assert issues.async_get_issue(DOMAIN, issue_id) is None
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"
+
+
+async def test_the_crop_screen_shows_each_try(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    entry = await _entry(hass)
+    await _post(await hass_client_no_auth(), entry, synth.frame(1234567, LAYOUT, random.Random(8)))
+    result = await _open(hass, entry, "counter")
+    first = result["description_placeholders"]["frame_image"]
+    assert first.startswith("![](/api/image_proxy/image.gas_meter_frame?token=")
+    assert result["description_placeholders"]["frame"] == "640 x 480"
+
+    moved = {**CROP, "x": CROP["x"] + 2}
+    result = await hass.config_entries.options.async_configure(result["flow_id"], moved)
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "counter"
+    assert entry.options["x"] == CROP["x"] + 2
+    again = result["description_placeholders"]["frame_image"]
+    assert again != first
+    assert f"crop=0-{CROP['x'] + 2}-" in again
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**CROP, "done": True}
+    )
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["x"] == CROP["x"]
