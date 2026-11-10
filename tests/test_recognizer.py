@@ -169,3 +169,14 @@ def test_render_outlines_the_windows() -> None:
     with Image.open(io.BytesIO(drawn)) as image:
         assert image.size == LAYOUT.frame
         assert image.getpixel((LAYOUT.x, LAYOUT.y))[1] > 150
+
+
+def test_the_exif_orientation_is_followed() -> None:
+    """A phone that tags the turn instead of turning the pixels."""
+    image = Image.new("RGB", (40, 20))
+    exif = Image.Exif()
+    exif[0x0112] = 6  # turn 90 degrees clockwise to view
+    jpeg = io.BytesIO()
+    image.save(jpeg, "JPEG", exif=exif.tobytes())
+    assert r.open_frame(jpeg.getvalue(), 0).size == (20, 40)
+    assert r.open_frame(jpeg.getvalue(), 90).size == (40, 20)

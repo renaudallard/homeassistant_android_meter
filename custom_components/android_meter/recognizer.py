@@ -178,12 +178,14 @@ def _turn(image: Image.Image, rotation: int) -> Image.Image:
 
 
 def open_frame(data: bytes, rotation: int, mode: str = "L") -> Image.Image:
-    """Decode a JPEG frame and turn it upright."""
+    """Decode a JPEG frame and turn it upright: as its EXIF orientation
+    says, then by rotation."""
     try:
         with Image.open(io.BytesIO(data), formats=["JPEG"]) as image:
             if image.width * image.height > MAX_PIXELS:
                 raise FrameError("frame too large")
-            frame = image.convert(mode)
+            # Some phones tag the turn instead of turning the pixels.
+            frame = ImageOps.exif_transpose(image).convert(mode)
     except (OSError, SyntaxError, ValueError, Image.DecompressionBombError) as err:
         raise FrameError("not a readable JPEG") from err
     return _turn(frame, rotation)
