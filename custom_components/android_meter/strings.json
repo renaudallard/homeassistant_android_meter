@@ -10,9 +10,12 @@
       },
       "pair": {
         "title": "Pair the phone",
-        "description": "Scan this code with the phone's camera and share the text it shows to Android Meter, or copy it and press **Paste the pairing link** in the app. The app asks before it uses the address. Or type the address in the app:\n\n`{webhook_url}`\n\nThe phone must be on the same network as Home Assistant. Once the first picture has arrived, open this integration's options to set the crop and teach it the reading.",
+        "description": "**Pair the phone with this code**\n\n1. On the phone, open the camera app and point it at the QR code below.\n2. Tap **Share** on the text the camera shows and pick **Android Meter**. If the camera only offers Copy, copy it, open Android Meter and press **Paste the pairing link**.\n3. Android Meter asks whether to send the pictures to this Home Assistant. Check the address and tap **Use it**.\n\nTo type the address instead: `{webhook_url}`\n\nThe phone must be on the same network as Home Assistant. Once the first picture has arrived, open this integration's options to set the crop and teach it the reading.",
         "data": {
           "qr_code": "Pairing code"
+        },
+        "data_description": {
+          "qr_code": "Scan with the phone's camera app, then share the text to Android Meter. It holds this Home Assistant's address."
         }
       }
     }
@@ -21,7 +24,7 @@
     "step": {
       "init": {
         "title": "Meter settings",
-        "description": "The phone posts to `{webhook_url}`; scan the pairing code with its camera and share the text to the app to set it there.\n\nLast frame: {frame} pixels. Look at the frame image entity to place the crop: from the top left corner of the first drum window to the bottom right corner of the last one, the windows only. Each window is outlined there once saved.\n\nDigits learnt: {known}. Still to learn: {unknown}. To teach it, type the reading the frame image shows; digits are also learnt on their own as the meter turns.",
+        "description": "To pair a phone, scan the pairing code below with its camera app and share the text to Android Meter. The phone posts to `{webhook_url}`.\n\nLast frame: {frame} pixels. Look at the frame image entity to place the crop: from the top left corner of the first drum window to the bottom right corner of the last one, the windows only. Each window is outlined there once saved.\n\nDigits learnt: {known}. Still to learn: {unknown}. To teach it, type the reading the frame image shows; digits are also learnt on their own as the meter turns.",
         "data": {
           "qr_code": "Pairing code",
           "interval": "Interval",
@@ -39,6 +42,7 @@
           "forget": "Forget the digits learnt"
         },
         "data_description": {
+          "qr_code": "Scan with the phone's camera app, then share the text to Android Meter. It holds this Home Assistant's address.",
           "interval": "How long the phone waits between two pictures.",
           "torch": "Light the meter for each picture.",
           "rotation": "How far to turn the picture clockwise so the digits stand upright. The crop is measured on the turned picture.",
