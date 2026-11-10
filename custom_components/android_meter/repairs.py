@@ -39,7 +39,6 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
 from . import MeterConfigEntry
-from .const import DEFAULTS
 from .teach import async_teach, teach_placeholders, teach_schema
 
 
@@ -57,9 +56,7 @@ class TeachFlow(RepairsFlow):
         meter = entry.runtime_data
         errors: dict[str, str] = {}
         if user_input is not None:
-            errors = await async_teach(
-                meter, {**DEFAULTS, **entry.options}, user_input, self._picture
-            )
+            errors = await async_teach(meter, user_input, self._picture)
             if not errors:
                 return self.async_create_entry(data={})
         self._picture = meter.picture()

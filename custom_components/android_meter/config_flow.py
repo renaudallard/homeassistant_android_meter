@@ -163,10 +163,9 @@ class AndroidMeterOptionsFlow(OptionsFlow):
         meter = entry.runtime_data
         errors: dict[str, str] = {}
         if user_input is not None:
-            options = self._current()
-            errors = await async_teach(meter, options, user_input, self._picture)
+            errors = await async_teach(meter, user_input, self._picture)
             if not errors:
-                return self.async_create_entry(data=options)
+                return self.async_create_entry(data=self._current())
         self._picture = meter.picture()
         return self.async_show_form(
             step_id="teach",
@@ -180,14 +179,13 @@ class AndroidMeterOptionsFlow(OptionsFlow):
         entry: MeterConfigEntry = self.config_entry
         current = self._current()
         if user_input is not None:
-            options = {
-                **current,
+            changes = {
                 CONF_INTERVAL: int(user_input[CONF_INTERVAL]),
                 CONF_TORCH: bool(user_input[CONF_TORCH]),
                 CONF_MAX_FLOW: float(user_input[CONF_MAX_FLOW]),
             }
-            await entry.runtime_data.async_configure(options)
-            return self.async_create_entry(data=options)
+            await entry.runtime_data.async_configure(changes)
+            return self.async_create_entry(data=self._current())
         url = _webhook_url(self.hass, entry.data[CONF_WEBHOOK_ID])
         schema = probatio.Schema(
             {

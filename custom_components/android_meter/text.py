@@ -73,7 +73,7 @@ class TeachText(MeterEntity, TextEntity):
                 translation_placeholders=counter_placeholders(meter),
             )
         try:
-            await meter.async_configure(meter.options, reading, picture=meter.picture())
+            await meter.async_configure(reading=reading, picture=meter.picture())
         except TeachError as err:
             raise ServiceValidationError(
                 translation_domain=DOMAIN, translation_key=str(err)

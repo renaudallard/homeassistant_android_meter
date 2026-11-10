@@ -105,7 +105,6 @@ def counter_placeholders(meter: Meter) -> dict[str, str]:
 
 async def async_teach(
     meter: Meter,
-    options: dict[str, Any],
     user_input: dict[str, Any],
     picture: tuple[bytes, datetime] | None,
 ) -> dict[str, str]:
@@ -121,7 +120,7 @@ async def async_teach(
         if reading is None:
             return {CONF_READING: "bad_reading"}
     try:
-        await meter.async_configure(options, reading, forget, picture)
+        await meter.async_configure(None, reading, forget, picture)
     except TeachError as err:
         return {"base": str(err)}
     return {}

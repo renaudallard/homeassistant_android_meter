@@ -70,13 +70,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: MeterConfigEntry) -> boo
     )
     entry.async_on_unload(lambda: webhook.async_unregister(hass, webhook_id))
     entry.async_on_unload(meter.async_unload)
-    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
-
-
-async def _async_options_updated(hass: HomeAssistant, entry: MeterConfigEntry) -> None:
-    await entry.runtime_data.async_configure(entry.options)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: MeterConfigEntry) -> bool:

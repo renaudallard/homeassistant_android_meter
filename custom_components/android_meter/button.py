@@ -54,7 +54,7 @@ class ForgetButton(MeterEntity, ButtonEntity):
     _attr_entity_category = EntityCategory.CONFIG
 
     async def async_press(self) -> None:
-        await self.meter.async_configure(self.meter.options, None, forget=True)
+        await self.meter.async_configure(forget=True)
 
 
 class FindButton(MeterEntity, ButtonEntity):

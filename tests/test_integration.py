@@ -506,7 +506,7 @@ async def test_a_crop_change_waits_for_a_reading_being_taught(
 
     with patch.object(meter, "_teach", slow):
         taught = hass.async_create_task(
-            meter.async_configure(meter.options, Decimal("1234.567"), picture=meter.picture())
+            meter.async_configure(reading=Decimal("1234.567"), picture=meter.picture())
         )
         while not meter._lock.locked():
             await asyncio.sleep(0)
@@ -517,6 +517,50 @@ async def test_a_crop_change_waits_for_a_reading_being_taught(
         await taught
         assert await change == "crop_locked"
     assert entry.options["x"] == CROP["x"]
+    assert any(meter.patches.counts())
+
+
+async def test_a_reading_typed_during_a_crop_change_is_learnt_on_the_new_crop(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """A reading typed while a crop change waits for a frame being read
+    is taught on the crop in force when its turn comes, not on the one
+    there was when it was typed, which would be dropped with what it
+    learnt."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    await _post(client, entry, synth.frame(1234567, LAYOUT, random.Random(12), light=0.9, shade=0))
+    await _options(hass, entry, **CROP)
+    meter = entry.runtime_data
+    release = threading.Event()
+    read = meter._read
+
+    def slow(*args: Any) -> Any:
+        release.wait(10)
+        return read(*args)
+
+    with patch.object(meter, "_read", slow):
+        frame = hass.async_create_task(meter.async_frame(meter.frame))
+        while not meter._lock.locked():
+            await asyncio.sleep(0)
+        change = hass.async_create_task(meter.async_change({"x": CROP["x"] + 1}))
+        taught = hass.async_create_task(
+            hass.services.async_call(
+                "text",
+                "set_value",
+                {"entity_id": "text.gas_meter_teach_the_reading", "value": "1234.567"},
+                blocking=True,
+            )
+        )
+        for _ in range(20):
+            await asyncio.sleep(0)
+        release.set()
+        await frame
+        assert await change is None
+        await taught
+    await hass.async_block_till_done()
+    assert entry.options["x"] == meter.options["x"] == CROP["x"] + 1
+    assert meter.locked
     assert any(meter.patches.counts())
 
 

@@ -459,12 +459,12 @@ class Meter:
 
     async def async_configure(
         self,
-        options: Mapping[str, Any],
+        changes: Mapping[str, Any] | None = None,
         reading: Decimal | None = None,
         forget: bool = False,
         picture: tuple[bytes, datetime] | None = None,
     ) -> None:
-        """Take new options, and maybe the reading picture shows, to learn.
+        """Take option changes, and maybe the reading picture shows, to learn.
 
         picture is the frame the reading was read from, as picture() gave
         it when the screen was drawn: frames that came in since show other
@@ -473,9 +473,12 @@ class Meter:
         drums no longer show on the same scale. Nothing changes when the
         reading cannot be taught. A reading taught locks the crop, so that
         a slip on the device page cannot undo it.
+
+        The changes go over the options in force once the lock is held, so
+        that a crop changed meanwhile is kept.
         """
         async with self._lock:
-            await self._configure(options, reading, forget, picture)
+            await self._configure({**self.options, **(changes or {})}, reading, forget, picture)
         self._notify()
 
     async def _configure(
@@ -485,7 +488,8 @@ class Meter:
         forget: bool,
         picture: tuple[bytes, datetime] | None,
     ) -> None:
-        """What async_configure does, under the lock."""
+        """What async_configure does, under the lock. The options applied
+        are stored in the entry too."""
         settings = Settings.from_options(options)
         fresh = forget or settings.shape() != self.settings.shape()
         rescaled = settings.decimals != self.settings.decimals
@@ -526,6 +530,9 @@ class Meter:
             self.last = None
         self._save()
         self._arm_silence()
+        entry = self.hass.config_entries.async_get_entry(self.entry_id)
+        if entry is not None:
+            self.hass.config_entries.async_update_entry(entry, options=self.options)
 
     async def async_change(self, changes: Mapping[str, Any]) -> str | None:
         """Apply option changes from the device page or the phone.
@@ -555,9 +562,6 @@ class Meter:
             if error is not None:
                 return error
             await self._configure(options, None, False, None)
-            entry = self.hass.config_entries.async_get_entry(self.entry_id)
-            if entry is not None:
-                self.hass.config_entries.async_update_entry(entry, options=options)
         self._notify()
         return None
 
