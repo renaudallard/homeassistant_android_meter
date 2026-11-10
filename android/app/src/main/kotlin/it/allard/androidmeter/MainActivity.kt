@@ -158,7 +158,7 @@ class MainActivity : Activity() {
         val address = pairingAddress(text)
         val host = address?.let { Uri.parse(it).host }
         if (address == null || host.isNullOrEmpty()) {
-            status.text = getString(R.string.link_bad)
+            Status.say(getString(R.string.link_bad))
             return
         }
         val port = Uri.parse(address).port
@@ -168,7 +168,7 @@ class MainActivity : Activity() {
             .setPositiveButton(R.string.link_use) { _, _ ->
                 settings.url = address
                 url.setText(address)
-                status.text = getString(R.string.link_set)
+                Status.say(getString(R.string.link_set))
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
@@ -264,7 +264,7 @@ class MainActivity : Activity() {
 
     private fun withPermissions(action: () -> Unit) {
         if (!save()) {
-            status.text = getString(R.string.bad_url)
+            Status.say(getString(R.string.bad_url))
             return
         }
         val asked = needed.toMutableList()
@@ -288,7 +288,7 @@ class MainActivity : Activity() {
         if (needed.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }) {
             action()
         } else {
-            status.text = getString(R.string.denied)
+            Status.say(getString(R.string.denied))
         }
     }
 
@@ -311,11 +311,11 @@ class MainActivity : Activity() {
     /* The crop is drawn on the last picture, sent to Home Assistant. */
     private fun cropIt() {
         if (!save()) {
-            status.text = getString(R.string.bad_url)
+            Status.say(getString(R.string.bad_url))
             return
         }
         if (Status.picture == null) {
-            status.text = getString(R.string.no_picture)
+            Status.say(getString(R.string.no_picture))
             return
         }
         startActivity(Intent(this, CropActivity::class.java))
