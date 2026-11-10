@@ -255,6 +255,9 @@ async def test_options_errors(hass: HomeAssistant, hass_client_no_auth: Any) -> 
     assert entry.options["x"] == CROP["x"]
     result = await _options(hass, entry, reading="123456.789")
     assert result["errors"] == {"reading": "bad_reading"}
+    # The drums were set to 4 above: the error says what this counter takes.
+    assert result["description_placeholders"]["digits"] == "4"
+    assert result["description_placeholders"]["example"] == "0.123"
     result = await _options(hass, entry, reading="1234.5678")
     assert result["errors"] == {"reading": "bad_reading"}
 
@@ -423,6 +426,11 @@ async def test_the_device_controls(hass: HomeAssistant, hass_client_no_auth: Any
             blocking=True,
         )
     assert err.value.translation_key == "bad_reading"
+    assert err.value.translation_placeholders == {
+        "digits": "8",
+        "decimals": "3",
+        "example": "01234.567",
+    }
     await hass.services.async_call(
         "text",
         "set_value",

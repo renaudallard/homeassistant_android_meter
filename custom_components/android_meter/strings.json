@@ -59,7 +59,7 @@
       }
     },
     "error": {
-      "bad_reading": "This reading does not fit the counter: check the number of drums and decimal drums.",
+      "bad_reading": "This reading does not fit the counter: it has {digits} drums, {decimals} of them decimal, so a reading looks like {example}. Type every drum of the crop, decimals included, or correct the drums and decimal drums on the device page.",
       "crop_outside": "The crop goes past the edge of the last frame.",
       "no_crop": "Set the crop before teaching a reading.",
       "no_frame": "No frame has arrived yet to teach the reading from.",
@@ -167,7 +167,7 @@
           }
         },
         "error": {
-          "bad_reading": "This reading does not fit the counter: check the number of drums and decimal drums.",
+          "bad_reading": "This reading does not fit the counter: it has {digits} drums, {decimals} of them decimal, so a reading looks like {example}. Type every drum of the crop, decimals included, or correct the drums and decimal drums on the device page.",
           "no_reading": "Type the reading the picture shows, or tick Forget the digits learnt.",
           "no_crop": "Set the crop before teaching a reading.",
           "no_frame": "No frame has arrived yet to teach the reading from.",
@@ -194,7 +194,7 @@
       "message": "There cannot be more decimal drums than drums."
     },
     "bad_reading": {
-      "message": "This reading does not fit the counter: check the number of drums and decimal drums."
+      "message": "This reading does not fit the counter: it has {digits} drums, {decimals} of them decimal, so a reading looks like {example}. Type every drum of the crop, decimals included, or correct the drums and decimal drums on the device page."
     },
     "no_crop": {
       "message": "Set the crop before teaching a reading."

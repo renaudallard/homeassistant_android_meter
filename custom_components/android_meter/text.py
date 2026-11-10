@@ -37,6 +37,7 @@ from . import MeterConfigEntry
 from .const import DOMAIN
 from .entity import MeterEntity
 from .meter import TeachError, parse_reading
+from .teach import counter_placeholders
 
 
 async def async_setup_entry(
@@ -66,7 +67,11 @@ class TeachText(MeterEntity, TextEntity):
         meter = self.meter
         reading = parse_reading(value, meter.settings)
         if reading is None:
-            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="bad_reading")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="bad_reading",
+                translation_placeholders=counter_placeholders(meter),
+            )
         try:
             await meter.async_configure(meter.options, reading)
         except TeachError as err:

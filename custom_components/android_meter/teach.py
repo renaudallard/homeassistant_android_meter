@@ -81,11 +81,20 @@ def frame_picture(hass: HomeAssistant, entry_id: str, meter: Meter) -> str:
 def teach_placeholders(hass: HomeAssistant, entry_id: str, meter: Meter) -> dict[str, str]:
     """The picture, the digits learnt and an example of a reading."""
     known = meter.known()
-    settings = meter.settings
     return {
+        **counter_placeholders(meter),
         "frame_image": frame_picture(hass, entry_id, meter),
         "known": " ".join(str(d) for d in known) or "-",
         "unknown": " ".join(str(d) for d in range(10) if d not in known) or "-",
+    }
+
+
+def counter_placeholders(meter: Meter) -> dict[str, str]:
+    """How many drums the counter has, and how a reading of it is written."""
+    settings = meter.settings
+    return {
+        "digits": str(settings.digits),
+        "decimals": str(settings.decimals),
         "example": _example(settings.digits, settings.decimals),
     }
 
