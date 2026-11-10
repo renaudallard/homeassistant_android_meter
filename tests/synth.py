@@ -29,8 +29,8 @@ Each drum is a strip of the figures 0 to 9 and 0 again, seen through a
 window. The lowest drum turns with the volume; each higher one turns only
 while the drum below goes from 9 to 0, as an odometer does, so a frame
 taken mid-carry shows several drums between two figures. Integer drums are
-white on black, decimal ones white on red. Light, noise and the position
-of the counter in the frame vary per frame.
+white on black with a bar under each digit, decimal ones white on red.
+Light, noise and the position of the counter in the frame vary per frame.
 """
 
 from __future__ import annotations
@@ -43,6 +43,8 @@ from dataclasses import dataclass
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 PITCH = 70
+# Whether the black drums print a bar under each digit.
+BARS = True
 WINDOW = (40, 62)
 GAP = 10
 GLYPH = 40
@@ -76,7 +78,7 @@ class Layout:
         }
 
 
-_STRIPS: dict[tuple[int, int, int], Image.Image] = {}
+_STRIPS: dict[tuple[int, int, int, bool], Image.Image] = {}
 _NOISE: dict[tuple[int, int], list[Image.Image]] = {}
 
 
@@ -98,18 +100,25 @@ def _noise(size: tuple[int, int], rng: random.Random) -> Image.Image:
 
 
 def _strip(background: tuple[int, int, int]) -> Image.Image:
-    strip = _STRIPS.get(background)
+    strip = _STRIPS.get((*background, BARS))
     if strip is None:
         font = ImageFont.load_default(GLYPH)
         strip = Image.new("RGB", (WINDOW[0], PITCH * 12), background)
         draw = ImageDraw.Draw(strip)
+        dark = BARS and background[0] < 100
         for j in range(12):
             figure = str((j - 1) % 10)
             centre = PITCH * j + PITCH // 2
+            if dark:
+                # The bar some meters print under each digit of the black drums.
+                middle = WINDOW[0] // 2
+                draw.rectangle(
+                    (middle - 6, centre + 19, middle + 6, centre + 21), fill=(235, 235, 235)
+                )
             draw.text(
                 (WINDOW[0] // 2, centre), figure, fill=(235, 235, 235), font=font, anchor="mm"
             )
-        _STRIPS[background] = strip
+        _STRIPS[(*background, BARS)] = strip
     return strip
 
 

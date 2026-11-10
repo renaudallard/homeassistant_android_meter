@@ -47,7 +47,7 @@ import io
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps, ImageStat
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps, ImageStat
 
 # A mask is a Python int of CELL_W * CELL_H bits, the top left pixel
 # highest, row after row.
@@ -85,11 +85,8 @@ MARGIN = 8.0
 # light, a finger, or a crop off the counter.
 MIN_CONTRAST = 40
 
-# A drum at rest shows one digit with bare ground above and below it. Ink
-# over more than EDGE_INK of the top or bottom EDGE_ROWS rows means the drum
-# is between two digits.
-EDGE_ROWS = 3
-EDGE_INK = 0.15
+# A digit whose ink spans at most this share of the window across is thin.
+NARROW = 0.45
 
 PER_DIGIT = 16
 
@@ -233,13 +230,6 @@ def _threshold(histogram: list[int]) -> int:
     return best[1]
 
 
-def _ink(mask: int, rows: int, top: bool) -> float:
-    """Share of ink in the top or bottom rows of a mask."""
-    bits = rows * CELL_W
-    band = mask >> (_BITS - bits) if top else mask & ((1 << bits) - 1)
-    return band.bit_count() / bits
-
-
 def _bits(patch: Image.Image) -> int:
     """The ink of a grey patch, split at Otsu's threshold, as a mask."""
     level = _threshold(patch.histogram())
@@ -248,15 +238,59 @@ def _bits(patch: Image.Image) -> int:
 
 
 def _rows(mask: int, width: int, height: int) -> tuple[int, int] | None:
-    """First and last row of a mask holding a stroke, specks left aside."""
-    least = 2
+    """First and last row of a mask holding ink."""
     full = (1 << width) - 1
-    inked = [
-        y
-        for y in range(height)
-        if ((mask >> ((height - 1 - y) * width)) & full).bit_count() >= least
-    ]
+    inked = [y for y in range(height) if (mask >> ((height - 1 - y) * width)) & full]
     return (inked[0], inked[-1]) if inked else None
+
+
+def _stroke(mask: int, width: int, height: int) -> int:
+    """The digit's own ink: the largest stroke, and any stroke beside it.
+
+    Marks wholly above or below it, such as the bar some drums print under
+    each digit, or a speck, are left out.
+    """
+    size = width * height
+    bits = bin(mask)[2:].zfill(size)
+    seen = [c == "0" for c in bits]
+    strokes: list[tuple[int, int, int, list[int]]] = []
+    for start in range(size):
+        if seen[start]:
+            continue
+        seen[start] = True
+        stack = [start]
+        found = [start]
+        while stack:
+            at = stack.pop()
+            y, x = divmod(at, width)
+            for ny in (y - 1, y, y + 1):
+                if not 0 <= ny < height:
+                    continue
+                for nx in (x - 1, x, x + 1):
+                    near = ny * width + nx
+                    if 0 <= nx < width and not seen[near]:
+                        seen[near] = True
+                        stack.append(near)
+                        found.append(near)
+        rows = [at // width for at in found]
+        strokes.append((len(found), min(rows), max(rows), found))
+    if not strokes:
+        return 0
+    _, top, bottom, _ = max(strokes, key=lambda stroke: stroke[0])
+    kept = 0
+    for _, first, last, found in strokes:
+        if last >= top and first <= bottom:
+            for at in found:
+                kept |= 1 << (size - 1 - at)
+    return kept
+
+
+def _flatten(work: Image.Image) -> Image.Image:
+    """The window less its own background, so that a reflection's glow
+    across it does not split a digit at the threshold. The background is
+    the window with its strokes worn away."""
+    background = work.filter(ImageFilter.MinFilter(7)).filter(ImageFilter.GaussianBlur(3))
+    return ImageOps.autocontrast(ImageChops.subtract(work, background), cutoff=1)
 
 
 def _cell(image: Image.Image) -> Cell:
@@ -264,32 +298,52 @@ def _cell(image: Image.Image) -> Cell:
 
     A window whose grey levels hardly spread once shrunk to a cell, which
     averages the sensor's noise away, is blank. Otherwise the grey levels
-    are stretched and turned so the ink is bright, then split by Otsu's
-    threshold. A drum is at rest when little ink reaches its top and bottom
-    rows and none touches the window's edge. A digit at rest is cut down to
-    the rows its ink spans and stretched to the height of a cell, so that it
-    fills the mask whatever its size in the frame, and wherever the last
-    drum, which stops where the gas did, left it in its window.
+    are stretched and turned so the ink is bright, the window's background
+    is taken away, and the rest is split by Otsu's threshold.
+
+    A drum is at rest when the digit's own ink stays clear of the window's
+    top and bottom edges: one between two digits shows strokes the window
+    cuts. A digit at rest is cut down to the rows it spans, a thin one
+    centred across, and stretched to the height of a cell, so that it fills the mask
+    whatever its size in the frame, and wherever the last drum, which stops
+    where the gas did, left it in its window.
     """
     small = image.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR)
     if _spread(small.histogram()) < MIN_CONTRAST:
         return Cell(None, False)
-    work = image.resize((CELL_W * 2, CELL_H * 2), Image.Resampling.BILINEAR)
+    width, height = CELL_W * 2, CELL_H * 2
+    work = image.resize((width, height), Image.Resampling.BILINEAR)
     work = ImageOps.autocontrast(work, cutoff=2)
     if ImageStat.Stat(work).median[0] > 127:
         work = ImageOps.invert(work)
-    work = work.filter(ImageFilter.GaussianBlur(0.7))
-    mask = _bits(work.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR))
-    at_rest = _ink(mask, EDGE_ROWS, True) <= EDGE_INK and _ink(mask, EDGE_ROWS, False) <= EDGE_INK
-    rows = _rows(_bits(work), work.width, work.height) if at_rest else None
-    if rows is None:
-        return Cell(mask, False)
+    work = _flatten(work).filter(ImageFilter.GaussianBlur(0.7))
+    shown = _bits(work.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR))
+    digit = _stroke(_bits(work), width, height)
+    rows = _rows(digit, width, height)
+    if rows is None or rows[0] == 0 or rows[1] == height - 1:
+        return Cell(shown, False)
     top, bottom = rows
-    if top == 0 or bottom == work.height - 1:
-        # Ink running into the edge of the window is a digit cut by it.
-        return Cell(mask, False)
-    digit = work.crop((0, max(0, top - 1), work.width, min(work.height, bottom + 2)))
-    return Cell(_bits(digit.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR)), True)
+    # The grey window with all but the digit's strokes, and a pixel around
+    # them, blanked: shrinking grey keeps what a shrunk mask would lose.
+    keep = Image.frombytes("1", (width, height), digit.to_bytes(width * height // 8, "big"))
+    keep = keep.convert("L").filter(ImageFilter.MaxFilter(3))
+    ink = ImageChops.multiply(work, keep)
+    # A thin digit, a 1, is centred across on its ink: windows are cut by
+    # estimate, and a 1 two pixels off matches nothing. A wide one keeps its
+    # place, which tells a 7 from a 1.
+    columns = [0] * width
+    for at in range(width * height):
+        if digit >> (width * height - 1 - at) & 1:
+            columns[at % width] += 1
+    inked = [x for x, count in enumerate(columns) if count]
+    shift = 0
+    if inked[-1] - inked[0] + 1 <= NARROW * width:
+        centre = sum(x * count for x, count in enumerate(columns)) / sum(columns)
+        shift = round((width - 1) / 2 - centre)
+    centred = Image.new("L", (width, height), 0)
+    centred.paste(ink, (shift, 0))
+    centred = centred.crop((0, max(0, top - 1), width, min(height, bottom + 2)))
+    return Cell(_bits(centred.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR)), True)
 
 
 def cut(frame: Image.Image, geometry: Geometry) -> list[Cell]:

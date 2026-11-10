@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import io
 import random
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -41,8 +42,10 @@ GEOMETRY = r.Geometry(0, LAYOUT.x, LAYOUT.y, LAYOUT.width, LAYOUT.height, LAYOUT
 
 
 def _cells(volume: float, rng: random.Random, light: float = 0.9) -> list[r.Cell]:
-    """A frame under the steady light of a torch, unless told otherwise."""
-    return r.cut(r.open_frame(synth.frame(volume, LAYOUT, rng, light=light, shade=0), 0), GEOMETRY)
+    """A frame from a phone fixed to the meter, under the steady light of its
+    torch unless told otherwise."""
+    data = synth.frame(volume, LAYOUT, rng, light=light, shade=0, jitter=0)
+    return r.cut(r.open_frame(data, 0), GEOMETRY)
 
 
 def _taught(rng: random.Random, *values: int) -> r.Patches:
@@ -180,3 +183,26 @@ def test_the_exif_orientation_is_followed() -> None:
     image.save(jpeg, "JPEG", exif=exif.tobytes())
     assert r.open_frame(jpeg.getvalue(), 0).size == (20, 40)
     assert r.open_frame(jpeg.getvalue(), 90).size == (40, 20)
+
+
+def _actaris() -> list[r.Cell]:
+    """The drum strip of a real Actaris G4, read 61111 and 8. A torch glare
+    spoils the second and third drums, the seventh is behind a seal wire."""
+    data = (Path(__file__).parent / "fixtures" / "actaris_strip.jpg").read_bytes()
+    strip = r.Geometry(0, 92, 42, 7 * 74 + 6 * 71, 136, 7, 71)
+    return r.cut(r.open_frame(data, 0), strip)
+
+
+def test_a_real_meter_with_bars_under_its_digits() -> None:
+    cells = _actaris()
+    assert [cells[i].at_rest for i in (0, 3, 4, 5)] == [True] * 4
+    assert not cells[6].at_rest
+    patches = r.Patches()
+    patches.learn(1, cells[3].mask)
+    dist = patches.distance(r._shifts(cells[4].mask), 1)
+    assert dist is not None and dist <= r.MATCH
+    patches.learn(6, cells[0].mask)
+    patches.learn(8, cells[5].mask)
+    for i, digit in ((0, 6), (5, 8)):
+        nearest = min((patches.distance(r._shifts(cells[i].mask), d), d) for d in (1, 6, 8))
+        assert nearest[1] == digit

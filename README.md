@@ -238,9 +238,12 @@ In Configure, a menu of two screens:
 - The webhook address holds the webhook's secret: the app never sends it
   anywhere else, does not follow redirects, and keeps it out of Android
   backups.
-- The recognition was developed and tested on synthetic pictures of a drum
-  counter, rolling drums, carries, uneven light and noise included. Real
-  meters differ; reports with the Frame image are welcome.
+- The recognition was developed on synthetic pictures of a drum counter,
+  rolling drums, carries, uneven light and noise included, and checked on a
+  real Actaris G4. Marks printed under the digits and a glow across a
+  window are handled; a glare streak across a digit, or a seal wire in
+  front of it, is not, so place the phone and its torch to keep the
+  windows clear. Reports with the Frame image are welcome.
 
 ## Reporting a problem
 
