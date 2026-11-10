@@ -56,9 +56,10 @@ def teach_schema() -> probatio.Schema:
 
 
 def _example(digits: int, decimals: int) -> str:
-    """How a reading of this counter is written, as 01234.567."""
+    """How a reading of this counter is written, as 01234.567, or 0.567
+    when every drum is a decimal."""
     figures = ("0123456789" * 2)[:digits]
-    whole = figures[: digits - decimals]
+    whole = figures[: digits - decimals] or "0"
     return f"{whole}.{figures[digits - decimals :]}" if decimals else whole
 
 

@@ -341,6 +341,10 @@ async def test_options_errors(hass: HomeAssistant, hass_client_no_auth: Any) -> 
     assert result["description_placeholders"]["example"] == "0.123"
     result = await _options(hass, entry, reading="1234.5678901")
     assert result["errors"] == {"reading": "bad_reading"}
+    # Every drum a decimal: the example is still a reading the form takes.
+    await _crop(hass, decimals=4)
+    result = await _options(hass, entry, reading="x")
+    assert result["description_placeholders"]["example"] == "0.0123"
 
 
 async def test_the_phone_goes_offline(
