@@ -75,7 +75,13 @@ class MainActivity : Activity() {
     private var shownPicture: ByteArray? = null
     private var lenses: List<Lens> = emptyList()
     private var thread: HandlerThread? = null
-    @Volatile private var single: Shot? = null
+    /*
+     * The last single picture, on its own thread, where it is cancelled
+     * with the activity; one already done ignores that. Whether one is
+     * under way is told on the main thread by shooting.
+     */
+    private var single: Shot? = null
+    private var shooting = false
     private var pending: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -231,7 +237,7 @@ class MainActivity : Activity() {
     private fun refresh() {
         val running = Status.running
         toggle.text = getString(if (running) R.string.stop else R.string.start)
-        shoot.isEnabled = !running && single == null
+        shoot.isEnabled = !running && !shooting
         url.isEnabled = !running
         camera.isEnabled = !running
         status.text = Status.text ?: getString(R.string.idle)
@@ -306,6 +312,9 @@ class MainActivity : Activity() {
     }
 
     private fun shootOnce() {
+        if (shooting) return
+        shooting = true
+        refresh()
         val t = thread ?: HandlerThread("single").also {
             it.start()
             thread = it
@@ -314,11 +323,10 @@ class MainActivity : Activity() {
         handler.post {
             single = shootAndSend(this, handler, true) {
                 runOnUiThread {
-                    single = null
+                    shooting = false
                     refresh()
                 }
             }
-            runOnUiThread(::refresh)
         }
     }
 }
