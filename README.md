@@ -183,8 +183,8 @@ starts over, for instance after a wrong reading was typed.
 
 A change of crop forgets the digits learnt, since they no longer match the
 windows. **Lock the crop** keeps a slip from doing that: while it is on, the
-crop and counter controls and the phone's crop editor are refused. Turn it
-off to move the crop, then teach the reading again.
+crop and counter controls, **Find the counter** and the phone's crop editor
+are refused. Turn it off to move the crop, then teach the reading again.
 
 ## Settings
 
@@ -196,7 +196,7 @@ On the meter's device page:
 | Crop left, top, width, height | The windows, in pixels of the turned picture. |
 | Gap between windows | Housing between two windows, in pixels. |
 | Drums, Decimal drums | How many drums, and how many after the decimal point. |
-| Lock the crop | On, the controls above refuse changes. Turns on when a reading is taught. |
+| Lock the crop | On, the controls above and Find the counter refuse changes. Turns on when a reading is taught. |
 | Teach the reading | Type the reading the Frame image shows to teach it. |
 | Forget the digits learnt | Start learning again. |
 | Find the counter | Find the row of drums on the last picture and set the crop around it. |
