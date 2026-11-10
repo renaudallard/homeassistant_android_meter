@@ -43,6 +43,7 @@ from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.network import NoURLAvailableError
 from homeassistant.setup import async_setup_component
@@ -258,7 +259,8 @@ async def test_new_decimal_drums_ask_for_the_reading(
     hass: HomeAssistant, hass_client_no_auth: Any, freezer: FrozenDateTimeFactory
 ) -> None:
     """The same drums read with one decimal less are ten times the volume:
-    the reading is dropped and asked again, the digits are kept."""
+    the reading is dropped and asked again, the digits are kept. The
+    reading is shown with the new decimals."""
     entry = await _entry(hass)
     client = await hass_client_no_auth()
     rng = random.Random(13)
@@ -269,7 +271,12 @@ async def test_new_decimal_drums_ask_for_the_reading(
     await hass.services.async_call(
         "switch", "turn_off", {"entity_id": "switch.gas_meter_lock_the_crop"}, blocking=True
     )
+    precision = er.async_get(hass).async_get("sensor.gas_meter_reading").options["sensor"]
+    assert precision["suggested_display_precision"] == 3
     await _crop(hass, decimals=2)
+    await hass.async_block_till_done()
+    precision = er.async_get(hass).async_get("sensor.gas_meter_reading").options["sensor"]
+    assert precision["suggested_display_precision"] == 2
     assert hass.states.get("sensor.gas_meter_reading").state == "unknown"
     assert hass.states.get("sensor.gas_meter_status").state == "untaught"
     assert hass.states.get("sensor.gas_meter_learnt_digits").state == "10"

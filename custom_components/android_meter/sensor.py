@@ -35,7 +35,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import EntityCategory, UnitOfVolume
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import MeterConfigEntry
@@ -66,6 +66,24 @@ class ReadingSensor(MeterEntity, SensorEntity):
     _attr_device_class = SensorDeviceClass.GAS
     _attr_native_unit_of_measurement = UnitOfVolume.CUBIC_METERS
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    def __init__(self, meter: Meter, entry: MeterConfigEntry, key: str) -> None:
+        super().__init__(meter, entry, key)
+        self._decimals = meter.settings.decimals
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(self.meter.async_add_listener(self._updated))
+
+    @callback
+    def _updated(self) -> None:
+        """Store the new precision when the decimal drums change. Home
+        Assistant reads it when the entity is added and when its registry
+        entry changes, not on a state write."""
+        decimals = self.meter.settings.decimals
+        if decimals != self._decimals and self.registry_entry is not None:
+            self._decimals = decimals
+            self.async_registry_entry_updated()
+        self.async_write_ha_state()
 
     @property
     def suggested_display_precision(self) -> int:
