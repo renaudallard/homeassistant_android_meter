@@ -192,12 +192,23 @@ def find(frame: Image.Image) -> dict[str, int] | None:
         return None
     row = max(found, key=lambda r: (r.windows, len(r.shapes)))
     digit_height = statistics.median(shape.height for shape in row.shapes)
-    window = min(0.8 * row.pitch, WINDOW_WIDTH * max(shape.width for shape in row.shapes))
-    tall = WINDOW_HEIGHT * digit_height
-    left = row.shapes[0].middle - window / 2
-    top = statistics.median(shape.level for shape in row.shapes) - tall / 2
-    if left < 0 or top < 0:
+    widest = max(shape.width for shape in row.shapes)
+    level = statistics.median(shape.level for shape in row.shapes)
+    first = row.shapes[0].middle
+    last = first + (row.windows - 1) * row.pitch
+    # A counter against the picture's edge gets windows as wide as fit,
+    # still centred on its digits, as long as they hold the widest one.
+    window = min(
+        0.8 * row.pitch,
+        WINDOW_WIDTH * widest,
+        2 * first,
+        2 * (small.width - last),
+    )
+    tall = min(WINDOW_HEIGHT * digit_height, 2 * level, 2 * (small.height - level))
+    if window < widest or tall < digit_height:
         return None
+    left = first - window / 2
+    top = level - tall / 2
     # A red drum shows its colour around the window, the drum itself being
     # dark: the whole step is weighed, window and gap.
     decimals = 0

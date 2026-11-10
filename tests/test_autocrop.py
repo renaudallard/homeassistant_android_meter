@@ -59,6 +59,20 @@ def test_a_real_meter_is_found() -> None:
     assert all(cell.at_rest for cell in r.cut(r.open_frame(data, 0), geometry))
 
 
+def test_a_counter_against_the_edge_is_found() -> None:
+    """The same meter, its first drum against the left edge of the picture,
+    the eighth caught turning, a seal wire across the red drums."""
+    data = (Path(__file__).parent / "fixtures" / "actaris_edge.jpg").read_bytes()
+    crop = autocrop.find(_frame(data))
+    assert crop is not None
+    assert crop["x"] == 0
+    assert crop["digits"] == 7
+    geometry = r.Geometry(
+        0, crop["x"], crop["y"], crop["width"], crop["height"], crop["digits"], crop["gap"]
+    )
+    assert all(cell.at_rest for cell in r.cut(r.open_frame(data, 0), geometry))
+
+
 def test_the_synthetic_meter_is_found() -> None:
     layout = synth.Layout()
     data = synth.frame(1234567, layout, random.Random(3), light=0.9, shade=0, jitter=0)
