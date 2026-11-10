@@ -3,12 +3,12 @@
     <string name="app_name">Android Meter</string>
     <string name="url_hint">Webhook address from Home Assistant</string>
     <string name="camera">Camera</string>
-    <string name="camera_entry">%1$s: %2$s, focus from %3$s</string>
+    <string name="camera_entry">%1$s: %2$s, %3$s</string>
     <string name="facing_back">back</string>
     <string name="facing_front">front</string>
     <string name="facing_other">external</string>
     <string name="focus_fixed">fixed focus</string>
-    <string name="focus_cm">%1$d cm</string>
+    <string name="focus_cm">focus from %1$d cm</string>
     <string name="start">Start</string>
     <string name="stop">Stop</string>
     <string name="shoot">Take one picture</string>
