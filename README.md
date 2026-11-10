@@ -236,6 +236,10 @@ In Configure, a menu of two screens:
 | Status | How the last picture went (see below). |
 | Learnt digits | How many of the ten digits are known. |
 | Digits to learn | The digits not learnt yet, for example `2 3 5 7 9`, or `none`. |
+
+In Belgium, [Belgian Gas Prices](https://github.com/renaudallard/homeassistant_be_gas_prices)
+prices the Reading sensor with every part of the bill, and keeps the running
+cost of the year and of the month.
 | Frame | The last picture, upright, with each window outlined: green when it was read, orange when it was not, `~` under a drum caught between two digits. Redrawn on every change of crop. |
 
 | Status | Meaning |
