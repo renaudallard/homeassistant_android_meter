@@ -267,7 +267,7 @@ class MainActivity : Activity() {
             status.text = getString(R.string.bad_url)
             return
         }
-        val asked = mutableListOf(Manifest.permission.CAMERA)
+        val asked = needed.toMutableList()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             asked += Manifest.permission.POST_NOTIFICATIONS
         }
@@ -285,12 +285,20 @@ class MainActivity : Activity() {
         val action = pending
         pending = null
         if (code != PERMISSIONS || action == null) return
-        if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+        if (needed.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }) {
             action()
         } else {
             status.text = getString(R.string.denied)
         }
     }
+
+    /* The camera, and from Android 17 the local network Home Assistant is on. */
+    private val needed: List<String>
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+            listOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_LOCAL_NETWORK)
+        } else {
+            listOf(Manifest.permission.CAMERA)
+        }
 
     private fun start() {
         startForegroundService(Intent(this, CaptureService::class.java).setAction(CaptureService.ACTION_START))

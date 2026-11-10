@@ -36,7 +36,7 @@
     <string name="link_set">Address set from the pairing code.</string>
     <string name="bad_url">The address must start with http:// or https://.</string>
     <string name="no_camera">This phone has no usable camera.</string>
-    <string name="denied">The camera permission is needed.</string>
+    <string name="denied">The app needs the camera, and from Android 17 the local network, to send pictures to Home Assistant.</string>
     <string name="shooting">Taking a picture…</string>
     <string name="cancelled">Picture cancelled.</string>
     <string name="camera_failed">Camera failed: %1$s</string>

@@ -139,7 +139,10 @@ Android SDK platform 37).
    wants the camera that focuses closest, often the wide one, which also
    sees the most. Some phones, Motorola's among them, leave their extra
    back cameras out of Android's list; the app offers them all the same. The picture is shown in the app
-   and sent to Home Assistant, upright however the phone is held.
+   and sent to Home Assistant, upright however the phone is held. The first
+   time, Android asks to let the app use the camera, post its notification
+   and, from Android 17, reach the local network, which Android files
+   under nearby devices.
 5. **Set the crop on the phone**: press **Set the crop** in the app, then
    **Find the counter**: Home Assistant looks for the row of drums on the
    last picture and sets the box, the drums, the decimal drums (the red
