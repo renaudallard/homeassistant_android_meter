@@ -49,12 +49,12 @@ your own meter from one reading you type in, and the pictures never leave
 your network.
 
 <p align="center">
-  <img src="assets/frame.jpg" alt="The Frame image: each drum window outlined, the digit read under it" width="640"/>
+  <img src="assets/real_frame.jpg" alt="The Frame image: each drum window outlined, the digit read under it" width="420"/>
 </p>
 <p align="center"><sub>
-The Frame image, drawn by the integration on a synthetic counter. Green
-windows were read; the last drum is turning, so it is left out and the
-reading stays at 01284.390 until it stops.
+The Frame image of an Actaris G4, from a phone fixed to it with its wide
+camera. Every green window was read: 61115.18 m³. The last red drum sits
+apart from the others and is left out of the crop.
 </sub></p>
 
 > Two parts live in this repository: the Home Assistant integration in
