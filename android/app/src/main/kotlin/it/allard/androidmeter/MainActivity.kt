@@ -201,11 +201,7 @@ class MainActivity : Activity() {
     }
 
     private fun loadLenses() {
-        lenses = try {
-            lenses(this)
-        } catch (e: Exception) {
-            emptyList()
-        }
+        lenses = lenses(this)
         val labels = lenses.map { lens ->
             val facing = when (lens.facing) {
                 CameraCharacteristics.LENS_FACING_BACK -> getString(R.string.facing_back)

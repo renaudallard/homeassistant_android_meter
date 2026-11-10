@@ -68,9 +68,14 @@ private const val PROBED_IDS = 16
 /** One camera as offered to the user. */
 data class Lens(val id: String, val facing: Int?, val focusCm: Int?)
 
+/* The cameras to offer; none while the camera service is unreachable. */
 fun lenses(context: Context): List<Lens> {
     val manager = context.getSystemService(CameraManager::class.java)
-    val listed = manager.cameraIdList.toList()
+    val listed = try {
+        manager.cameraIdList.toList()
+    } catch (e: CameraAccessException) {
+        return emptyList()
+    }
     val hidden = (0 until PROBED_IDS).map { it.toString() }.filter { it !in listed }
     return (listed + hidden).mapNotNull { id ->
         val chars = try {
