@@ -52,7 +52,7 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
-from . import recognizer
+from . import autocrop, recognizer
 from .const import (
     CONF_DECIMALS,
     CONF_DIGITS,
@@ -209,6 +209,24 @@ def _units(value: Decimal, decimals: int, rounding: str) -> int:
 
 def _volume(units: int, decimals: int) -> Decimal:
     return Decimal(units).scaleb(-decimals)
+
+
+def _find_counter(data: bytes) -> dict[str, int] | None:
+    """The crop of the counter found on a picture. Runs in an executor."""
+    try:
+        frame = recognizer.open_frame(data, 0, "RGB")
+    except recognizer.FrameError:
+        return None
+    return autocrop.find(frame)
+
+
+def _find_message(body: bytes) -> bool:
+    """Whether a message from the phone is {"find": true}."""
+    try:
+        message = json.loads(body)
+    except ValueError:
+        return False
+    return bool(message == {"find": True})
 
 
 def _crop_message(body: bytes) -> dict[str, int] | None:
@@ -495,6 +513,19 @@ class Meter:
             self.hass.config_entries.async_update_entry(entry, options=options)
         return None
 
+    async def async_find_crop(self) -> str | None:
+        """Find the counter on the last picture and apply its crop.
+
+        Returns the error, or None.
+        """
+        frame = self.frame
+        if frame is None:
+            return "no_frame"
+        crop = await self.hass.async_add_executor_job(_find_counter, frame)
+        if crop is None:
+            return "counter_not_found"
+        return await self.async_change(crop)
+
     def crop(self) -> dict[str, Any]:
         """The crop and counter in force, for the phone's crop editor."""
         view: dict[str, Any] = {key: int(self.options[key]) for key in CROP_FIELDS}
@@ -539,13 +570,17 @@ class Meter:
         )
 
     async def _async_crop_from_phone(self, request: web.Request) -> web.Response:
-        """Apply {"crop": {...}} drawn on the phone, on the picture as sent."""
+        """Apply {"crop": {...}} drawn on the phone, on the picture as sent,
+        or {"find": true}, the counter found on it."""
         length = request.content_length
         if length is not None and length > MAX_MESSAGE_BYTES:
             return web.Response(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
         body = await request.read()
         if len(body) > MAX_MESSAGE_BYTES:
             return web.Response(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+        if _find_message(body):
+            error = await self.async_find_crop()
+            return web.json_response({"error": error, "crop": self.crop()})
         changes = _crop_message(body)
         if changes is None:
             return web.json_response({"error": "bad_message"}, status=HTTPStatus.BAD_REQUEST)

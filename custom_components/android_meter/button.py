@@ -23,16 +23,19 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""Forgetting the digits learnt, from the device page."""
+"""Forgetting the digits learnt, and finding the counter, from the device
+page."""
 
 from __future__ import annotations
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import MeterConfigEntry
+from .const import DOMAIN
 from .entity import MeterEntity
 
 
@@ -41,7 +44,8 @@ async def async_setup_entry(
     entry: MeterConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    async_add_entities([ForgetButton(entry.runtime_data, entry, "forget")])
+    meter = entry.runtime_data
+    async_add_entities([ForgetButton(meter, entry, "forget"), FindButton(meter, entry, "find")])
 
 
 class ForgetButton(MeterEntity, ButtonEntity):
@@ -51,3 +55,14 @@ class ForgetButton(MeterEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self.meter.async_configure(self.meter.options, None, forget=True)
+
+
+class FindButton(MeterEntity, ButtonEntity):
+    """Find the counter on the last picture and set the crop around it."""
+
+    _attr_entity_category = EntityCategory.CONFIG
+
+    async def async_press(self) -> None:
+        error = await self.meter.async_find_crop()
+        if error is not None:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key=error)

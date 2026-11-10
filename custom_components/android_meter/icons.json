@@ -60,6 +60,9 @@
     "button": {
       "forget": {
         "default": "mdi:backup-restore"
+      },
+      "find": {
+        "default": "mdi:magnify-scan"
       }
     }
   }

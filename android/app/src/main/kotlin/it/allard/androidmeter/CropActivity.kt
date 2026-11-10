@@ -49,8 +49,10 @@ class CropActivity : Activity() {
     private lateinit var view: CropView
     private lateinit var status: TextView
     private lateinit var save: Button
+    private lateinit var find: Button
     private var decimals = 3
     private var step = 1f
+    private val shownValues = mutableListOf<() -> Unit>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,7 +74,9 @@ class CropActivity : Activity() {
         }
         status = TextView(this).apply { text = getString(R.string.crop_hint) }
         save = Button(this).apply { text = getString(R.string.crop_save) }
+        find = Button(this).apply { text = getString(R.string.crop_find) }
         column.addView(status, MATCH_PARENT, WRAP_CONTENT)
+        column.addView(find, MATCH_PARENT, WRAP_CONTENT)
         column.addView(view, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
         column.addView(stepper(R.string.drums, { view.digits.toString() }) { d ->
             view.digits = (view.digits + d).coerceIn(1, 12)
@@ -88,29 +92,64 @@ class CropActivity : Activity() {
         setContentView(column)
         title = getString(R.string.crop_title)
         save.setOnClickListener { send() }
+        find.setOnClickListener { findIt() }
     }
 
     /* The crop Home Assistant reported, or a box across the middle. */
     private fun start(picture: Picture) {
-        val known = try {
-            settings.crop?.let { JSONObject(it) }
-        } catch (e: JSONException) {
-            null
-        }
-        val w = picture.width.toFloat()
-        val h = picture.height.toFloat()
-        val width = known?.optInt("width") ?: 0
-        val height = known?.optInt("height") ?: 0
-        if (known != null && width > 0 && height > 0 && known.optInt("rotation") == 0) {
-            val x = known.optInt("x").toFloat()
-            val y = known.optInt("y").toFloat()
-            view.box.set(x, y, minOf(w, x + width), minOf(h, y + height))
-            view.digits = known.optInt("digits", 8).coerceIn(1, 12)
-            decimals = known.optInt("decimals", 3).coerceIn(0, view.digits)
-            view.gap = known.optInt("gap").toFloat()
-        } else {
+        if (!apply(settings.crop, picture.width.toFloat(), picture.height.toFloat())) {
+            val w = picture.width.toFloat()
+            val h = picture.height.toFloat()
             view.box.set(w * 0.15f, h * 0.4f, w * 0.85f, h * 0.55f)
         }
+    }
+
+    /* Takes a crop reported by Home Assistant, if it is one for this picture. */
+    private fun apply(json: String?, w: Float, h: Float): Boolean {
+        val known = try {
+            json?.let { JSONObject(it) }
+        } catch (e: JSONException) {
+            null
+        } ?: return false
+        val width = known.optInt("width")
+        val height = known.optInt("height")
+        if (width <= 0 || height <= 0 || known.optInt("rotation") != 0) return false
+        val x = known.optInt("x").toFloat()
+        val y = known.optInt("y").toFloat()
+        view.box.set(x, y, minOf(w, x + width), minOf(h, y + height))
+        view.digits = known.optInt("digits", 8).coerceIn(1, 12)
+        decimals = known.optInt("decimals", 3).coerceIn(0, view.digits)
+        view.gap = known.optInt("gap").toFloat()
+        return true
+    }
+
+    /* Home Assistant finds the counter on the same picture and sets the crop. */
+    private fun findIt() {
+        val url = settings.url
+        val picture = Status.picture?.let { decodeUpright(it) } ?: return
+        find.isEnabled = false
+        Thread {
+            val (text, crop) = try {
+                val reply = findCounter(url)
+                reply.crop?.let { settings.crop = it }
+                when (reply.error) {
+                    null -> getString(R.string.crop_found) to reply.crop
+                    "crop_locked" -> getString(R.string.crop_locked) to null
+                    "counter_not_found" -> getString(R.string.crop_not_found) to null
+                    else -> getString(R.string.crop_refused, reply.error) to null
+                }
+            } catch (e: Exception) {
+                getString(R.string.crop_failed, e.message ?: e.javaClass.simpleName) to null
+            }
+            runOnUiThread {
+                if (crop != null && apply(crop, picture.width.toFloat(), picture.height.toFloat())) {
+                    shownValues.forEach { it() }
+                    view.invalidate()
+                }
+                status.text = text
+                find.isEnabled = true
+            }
+        }.start()
     }
 
     private fun stepper(label: Int, value: () -> String, change: (Int) -> Unit): LinearLayout {
@@ -120,6 +159,7 @@ class CropActivity : Activity() {
             gravity = Gravity.CENTER
             minEms = 3
         }
+        shownValues += { shown.text = value() }
         fun button(text: String, d: Int) = Button(this).apply {
             this.text = text
             setOnClickListener {

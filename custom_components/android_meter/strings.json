@@ -142,6 +142,9 @@
     "button": {
       "forget": {
         "name": "Forget the digits learnt"
+      },
+      "find": {
+        "name": "Find the counter"
       }
     }
   },
@@ -197,10 +200,13 @@
       "message": "Set the crop before teaching a reading."
     },
     "no_frame": {
-      "message": "No frame has arrived yet to teach the reading from."
+      "message": "No picture has arrived yet. Take one with the phone first."
     },
     "nothing_at_rest": {
       "message": "No drum shows a whole digit on the last frame. Wait for the meter to stop and try again."
+    },
+    "counter_not_found": {
+      "message": "No counter was found on the last picture. Check that the drums are in the picture, lit and in focus, or set the crop by hand."
     }
   }
 }

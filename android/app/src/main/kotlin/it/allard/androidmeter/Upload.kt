@@ -105,10 +105,15 @@ private fun read(input: InputStream): String {
 data class CropReply(val error: String?, val crop: String?)
 
 /** Sends a crop drawn on the phone. Blocks, like upload. */
-fun sendCrop(url: String, crop: JSONObject): CropReply {
+fun sendCrop(url: String, crop: JSONObject): CropReply = sendMessage(url, JSONObject().put("crop", crop))
+
+/** Asks Home Assistant to find the counter on the last picture and crop it. */
+fun findCounter(url: String): CropReply = sendMessage(url, JSONObject().put("find", true))
+
+private fun sendMessage(url: String, message: JSONObject): CropReply {
     val connection = URL(url).openConnection() as HttpURLConnection
     try {
-        val body = JSONObject().put("crop", crop).toString().toByteArray(Charsets.UTF_8)
+        val body = message.toString().toByteArray(Charsets.UTF_8)
         connection.requestMethod = "POST"
         connection.instanceFollowRedirects = false
         connection.connectTimeout = 15_000

@@ -483,3 +483,45 @@ async def test_a_crop_drawn_on_the_phone(hass: HomeAssistant, hass_client_no_aut
     assert reply["error"] == "crop_locked"
     assert reply["crop"]["locked"] is True
     assert entry.options["x"] == CROP["x"]
+
+
+async def test_finding_the_counter(hass: HomeAssistant, hass_client_no_auth: Any) -> None:
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    url = f"/api/webhook/{entry.data['webhook_id']}"
+
+    response = await client.post(url, json={"find": True})
+    assert (await response.json())["error"] == "no_frame"
+    with pytest.raises(ServiceValidationError) as err:
+        await hass.services.async_call(
+            "button", "press", {"entity_id": "button.gas_meter_find_the_counter"}, blocking=True
+        )
+    assert err.value.translation_key == "no_frame"
+
+    await _post(client, entry, synth.frame(1234567, LAYOUT, random.Random(10), light=0.9, shade=0))
+    await hass.services.async_call(
+        "button", "press", {"entity_id": "button.gas_meter_find_the_counter"}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert entry.options["digits"] == LAYOUT.digits
+    assert entry.options["decimals"] == LAYOUT.decimals
+    assert entry.options["width"] > 0
+
+    await hass.services.async_call(
+        "number",
+        "set_value",
+        {"entity_id": "number.gas_meter_crop_left", "value": 10},
+        blocking=True,
+    )
+    response = await client.post(url, json={"find": True})
+    reply = await response.json()
+    assert reply["error"] is None
+    assert reply["crop"]["x"] == entry.options["x"] != 10
+
+    await _options(hass, entry, reading="01234.567")
+    before = dict(entry.options)
+    response = await client.post(url, json={"find": True})
+    reply = await response.json()
+    assert reply["error"] in (None, "crop_locked")
+    assert reply["crop"]["locked"] is True
+    assert dict(entry.options) == before

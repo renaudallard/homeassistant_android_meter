@@ -137,12 +137,18 @@ Android SDK platform 37).
 4. **In the app**, pick the camera (the list shows how close each one
    focuses) and press **Take one picture**. The picture is shown in the app
    and sent to Home Assistant, upright however the phone is held.
-5. **Set the crop on the phone**: press **Set the crop** in the app. It
-   shows the last picture with a yellow box: drag it over the drum
-   windows, moving it from its middle and sizing it from its corners, and
-   set the drums, decimal drums and gap with the − and + buttons until each
-   green frame sits on one window. **Save the crop** sends it to Home
-   Assistant, which reads the next pictures with it.
+5. **Set the crop on the phone**: press **Set the crop** in the app, then
+   **Find the counter**: Home Assistant looks for the row of drums on the
+   last picture and sets the box, the drums, the decimal drums (the red
+   ones) and the gap. Check that each green frame sits on one window. If
+   not, or if no counter was found, drag the yellow box over the drum
+   windows yourself, moving it from its middle and sizing it from its
+   corners, set the drums, decimal drums and gap with the − and + buttons,
+   and press **Save the crop**.
+
+   A drum hidden by a glare between two others is counted all the same,
+   but one hidden at either end, behind a seal wire or out of the picture,
+   is left out: the reading then has fewer drums, which is fine.
 
    The meter's device page has the same settings as controls, next to the
    **Frame** image, for fine tuning: **Rotation**, **Crop left, top,
@@ -193,6 +199,7 @@ On the meter's device page:
 | Lock the crop | On, the controls above refuse changes. Turns on when a reading is taught. |
 | Teach the reading | Type the reading the Frame image shows to teach it. |
 | Forget the digits learnt | Start learning again. |
+| Find the counter | Find the row of drums on the last picture and set the crop around it. |
 
 In Configure, a menu of two screens:
 
