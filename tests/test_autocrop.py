@@ -112,3 +112,14 @@ def test_nothing_is_found_where_there_is_no_counter() -> None:
     blank = io.BytesIO()
     Image.new("RGB", (640, 480), (120, 120, 120)).save(blank, "JPEG")
     assert autocrop.find(_frame(blank.getvalue())) is None
+
+
+def test_a_picture_far_taller_than_wide_is_not_searched(monkeypatch) -> None:
+    """Brought to the search width, a narrow one would be enlarged without
+    end: 2 by 200 pixels would become 400 by 40000."""
+
+    def resize(*args: object, **kwargs: object) -> Image.Image:
+        raise AssertionError("enlarged")
+
+    monkeypatch.setattr(Image.Image, "resize", resize)
+    assert autocrop.find(Image.new("RGB", (2, 200))) is None

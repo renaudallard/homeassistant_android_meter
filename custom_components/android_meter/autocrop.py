@@ -62,6 +62,9 @@ RED_SHARE = 0.15
 # The window around a digit, in digit heights and widths.
 WINDOW_HEIGHT = 1.6
 WINDOW_WIDTH = 1.3
+# A picture taller than this many times its width is no phone's: brought
+# to the search width, a narrow one would grow without end.
+TALLEST = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,6 +194,8 @@ def find(frame: Image.Image) -> dict[str, int] | None:
 
     In pixels of the picture, as the options take them.
     """
+    if frame.height > TALLEST * frame.width:
+        return None
     scale = frame.width / SEARCH_WIDTH
     small = frame.resize(
         (SEARCH_WIDTH, max(1, round(frame.height / scale))), Image.Resampling.BILINEAR
