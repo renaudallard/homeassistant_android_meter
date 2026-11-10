@@ -199,12 +199,22 @@ class Shot(
         }
 
         override fun onDisconnected(camera: CameraDevice) {
-            finish(Result.failure(IOException("camera disconnected")))
+            lost(camera, IOException("camera disconnected"))
         }
 
         override fun onError(camera: CameraDevice, error: Int) {
-            finish(Result.failure(IOException("camera error $error")))
+            lost(camera, IOException("camera error $error"))
         }
+    }
+
+    /*
+     * The camera went away, maybe before it ever opened. It is closed all
+     * the same, as the documentation asks; finish only closes the one it
+     * was handed.
+     */
+    private fun lost(camera: CameraDevice, error: IOException) {
+        if (device !== camera) camera.close()
+        finish(Result.failure(error))
     }
 
     private val configured = object : CameraCaptureSession.StateCallback() {
