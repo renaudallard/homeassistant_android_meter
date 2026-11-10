@@ -31,11 +31,14 @@ import random
 from datetime import timedelta
 from http import HTTPStatus
 from typing import Any
+from unittest.mock import patch
+from urllib.parse import quote
 
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers.network import NoURLAvailableError
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant.common import async_fire_time_changed
 from pytest_homeassistant.components.diagnostics import (
@@ -46,6 +49,7 @@ from custom_components.android_meter.const import DOMAIN
 from tests import synth
 
 LAYOUT = synth.Layout()
+INTERNAL_URL = "http://192.168.1.10:8123"
 CROP = {
     "x": LAYOUT.x,
     "y": LAYOUT.y,
@@ -57,17 +61,39 @@ CROP = {
 }
 
 
-async def _entry(hass: HomeAssistant) -> Any:
+async def _entry(hass: HomeAssistant, internal_url: str | None = INTERNAL_URL) -> Any:
     assert await async_setup_component(hass, "http", {})
+    if internal_url is not None:
+        await hass.config.async_update(internal_url=internal_url)
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     assert result["type"] is FlowResultType.FORM
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"name": "Gas meter"}
     )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "pair"
+    url = result["description_placeholders"]["webhook_url"]
+    assert "/api/webhook/" in url
+    if internal_url is None:
+        assert url.startswith("/api/webhook/")
+    qr = _qr(result)
+    if internal_url is None:
+        assert qr is None
+    else:
+        assert url.startswith(internal_url)
+        assert qr == "androidmeter://setup?url=" + quote(url, safe="")
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert "/api/webhook/" in result["description_placeholders"]["webhook_url"]
     await hass.async_block_till_done()
     return hass.config_entries.async_entries(DOMAIN)[0]
+
+
+def _qr(result: Any) -> str | None:
+    """The data of the pairing QR code a form shows, if any."""
+    for key, selector in result["data_schema"].schema.items():
+        if str(key) == "qr_code":
+            return str(selector.config["data"])
+    return None
 
 
 async def _post(client: Any, entry: Any, data: bytes, kind: str = "image/jpeg") -> Any:
@@ -210,3 +236,26 @@ async def test_the_reading_survives_a_restart_and_removal_cleans_up(
     assert await hass.config_entries.async_remove(entry.entry_id)
     await hass.async_block_till_done()
     assert key not in hass_storage
+
+
+async def test_pairing_code(hass: HomeAssistant) -> None:
+    entry = await _entry(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    qr = _qr(result)
+    assert qr is not None
+    assert qr.startswith(
+        "androidmeter://setup?url=http%3A%2F%2F192.168.1.10%3A8123%2Fapi%2Fwebhook%2F"
+    )
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert "qr_code" not in entry.options
+
+
+async def test_no_pairing_code_without_an_address(hass: HomeAssistant) -> None:
+    """With no address for Home Assistant at all, only the path is shown."""
+
+    def nowhere(*_args: object, **_kwargs: object) -> str:
+        raise NoURLAvailableError
+
+    with patch("custom_components.android_meter.config_flow.webhook.async_generate_url", nowhere):
+        await _entry(hass, internal_url=None)

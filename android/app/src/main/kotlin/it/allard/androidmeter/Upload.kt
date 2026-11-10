@@ -47,6 +47,24 @@ fun validUrl(url: String): Boolean =
     url.startsWith("http://") || url.startsWith("https://")
 
 /**
+ * The webhook address in what the pairing QR code gave: the
+ * androidmeter://setup?url=... link it holds, or a plain webhook address,
+ * with whatever text a camera or a clipboard put around it. Null when
+ * there is none.
+ */
+fun pairingAddress(text: String): String? {
+    for (word in text.split(Regex("\\s+"))) {
+        val address = when {
+            word.startsWith("androidmeter://") -> android.net.Uri.parse(word).getQueryParameter("url")
+            word.startsWith("http://") || word.startsWith("https://") -> word
+            else -> null
+        }?.trim() ?: continue
+        if (validUrl(address) && address.contains("/api/webhook/")) return address
+    }
+    return null
+}
+
+/**
  * Posts a JPEG to the webhook and reads the answer. Blocks, so it never
  * runs on the main thread. Redirects are not followed: the address holds
  * the webhook's secret and must not be handed to another host.

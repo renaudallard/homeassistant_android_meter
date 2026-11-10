@@ -30,6 +30,8 @@ package it.allard.androidmeter
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
@@ -95,6 +97,8 @@ class MainActivity : Activity() {
         status = TextView(this).apply { setPadding(0, pad, 0, pad) }
         picture = ImageView(this).apply { adjustViewBounds = true }
         column.addView(url, MATCH_PARENT, WRAP_CONTENT)
+        val pasteButton = Button(this).apply { text = getString(R.string.paste) }
+        column.addView(pasteButton, MATCH_PARENT, WRAP_CONTENT)
         column.addView(TextView(this).apply { text = getString(R.string.camera) })
         column.addView(camera, MATCH_PARENT, WRAP_CONTENT)
         column.addView(toggle, MATCH_PARENT, WRAP_CONTENT)
@@ -109,7 +113,55 @@ class MainActivity : Activity() {
         toggle.setOnClickListener { if (Status.running) stop() else withPermissions(::start) }
         shoot.setOnClickListener { withPermissions(::shootOnce) }
         unlimited.setOnClickListener { askUnlimited() }
+        pasteButton.setOnClickListener { paste() }
         loadLenses()
+        if (savedInstanceState == null) fromLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        fromLink(intent)
+    }
+
+    /*
+     * The pairing QR code Home Assistant shows holds
+     * androidmeter://setup?url=<webhook address>. It reaches the app as a
+     * link opened, as text shared from the camera, or pasted. Any page or
+     * app can hand such text over, so the address is only taken once the
+     * user agrees to the host it names; the rest of it is the webhook's
+     * secret and stays off the screen.
+     */
+    private fun fromLink(intent: Intent?) {
+        when (intent?.action) {
+            Intent.ACTION_VIEW -> intent.dataString?.let { offer(it) }
+            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)?.let { offer(it) }
+        }
+    }
+
+    private fun paste() {
+        val clip = getSystemService(ClipboardManager::class.java).primaryClip
+        val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)
+        offer(text?.toString() ?: "")
+    }
+
+    private fun offer(text: String) {
+        val address = pairingAddress(text)
+        val host = address?.let { Uri.parse(it).host }
+        if (address == null || host.isNullOrEmpty()) {
+            status.text = getString(R.string.link_bad)
+            return
+        }
+        val port = Uri.parse(address).port
+        AlertDialog.Builder(this)
+            .setTitle(R.string.link_title)
+            .setMessage(getString(R.string.link_text, if (port > 0) "$host:$port" else host))
+            .setPositiveButton(R.string.link_use) { _, _ ->
+                settings.url = address
+                url.setText(address)
+                status.text = getString(R.string.link_set)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     override fun onResume() {

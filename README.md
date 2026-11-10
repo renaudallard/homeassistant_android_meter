@@ -125,12 +125,19 @@ Android SDK platform 37).
    close enough for the drums to fill a good part of the picture but no
    closer than the camera can focus. Keep it on its charger.
 2. **Add the integration**: Settings > Devices & services > Add integration
-   > Android Meter. Give the meter a name. The next screen shows the webhook
-   address, for example `http://192.168.1.10:8123/api/webhook/...`.
-3. **In the app**, enter that address, pick the camera (the list shows how
-   close each one focuses) and press **Take one picture**. The picture is
-   shown in the app and sent to Home Assistant.
-4. **In Home Assistant**, open the **Frame** image of the new device: it
+   > Android Meter. Give the meter a name. The next screen shows a pairing
+   QR code and the webhook address, for example
+   `http://192.168.1.10:8123/api/webhook/...`.
+3. **Pair the app**: scan the QR code with the phone's camera and share the
+   text it shows to Android Meter, or copy it and press **Paste the pairing
+   link** in the app. The app asks whether to send the pictures to that Home
+   Assistant; it names only the host, as the rest of the address is the
+   webhook's secret. The code is also in the integration's options. Typing
+   the address in the app works too.
+4. **In the app**, pick the camera (the list shows how close each one
+   focuses) and press **Take one picture**. The picture is shown in the app
+   and sent to Home Assistant.
+5. **In Home Assistant**, open the **Frame** image of the new device: it
    shows the last picture. Open the integration's options (Configure) and
    set:
    - **Rotation**, so the digits stand upright;
@@ -142,9 +149,9 @@ Android SDK platform 37).
 
    Save, take another picture and check the Frame image: each window is
    outlined. Adjust until every outline sits on its window.
-5. **Teach the reading**: in the options, type the reading the Frame image
+6. **Teach the reading**: in the options, type the reading the Frame image
    shows, for example `00123.456`, and save. The status turns to OK.
-6. **Start** the app. It keeps taking pictures with the screen off, as a
+7. **Start** the app. It keeps taking pictures with the screen off, as a
    foreground service with its notification showing. Press **Let it run
    without battery limits** once, so Android does not stop it to save
    battery.

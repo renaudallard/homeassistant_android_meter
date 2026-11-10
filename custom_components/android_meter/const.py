@@ -45,9 +45,10 @@ CONF_DIGITS: Final = "digits"
 CONF_DECIMALS: Final = "decimals"
 CONF_MAX_FLOW: Final = "max_flow"
 
-# Fields of the options form that are acted on, never stored.
+# Fields of the options form that are acted on or only shown, never stored.
 CONF_READING: Final = "reading"
 CONF_FORGET: Final = "forget"
+CONF_QR_CODE: Final = "qr_code"
 
 DEFAULT_NAME: Final = "Gas meter"
 

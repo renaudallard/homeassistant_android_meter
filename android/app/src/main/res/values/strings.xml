@@ -13,6 +13,12 @@
     <string name="stop">Stop</string>
     <string name="shoot">Take one picture</string>
     <string name="idle">Stopped.</string>
+    <string name="paste">Paste the pairing link</string>
+    <string name="link_title">Use this Home Assistant?</string>
+    <string name="link_text">Pictures of the meter will be sent to %1$s.</string>
+    <string name="link_use">Use it</string>
+    <string name="link_bad">No Home Assistant webhook address found. Scan the pairing code in Home Assistant and share or copy what the camera shows.</string>
+    <string name="link_set">Address set from the pairing code.</string>
     <string name="bad_url">The address must start with http:// or https://.</string>
     <string name="no_camera">This phone has no usable camera.</string>
     <string name="denied">The camera permission is needed.</string>

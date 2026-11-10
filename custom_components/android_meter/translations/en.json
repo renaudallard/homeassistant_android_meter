@@ -7,18 +7,23 @@
         "data": {
           "name": "Name"
         }
+      },
+      "pair": {
+        "title": "Pair the phone",
+        "description": "Scan this code with the phone's camera and share the text it shows to Android Meter, or copy it and press **Paste the pairing link** in the app. The app asks before it uses the address. Or type the address in the app:\n\n`{webhook_url}`\n\nThe phone must be on the same network as Home Assistant. Once the first picture has arrived, open this integration's options to set the crop and teach it the reading.",
+        "data": {
+          "qr_code": "Pairing code"
+        }
       }
-    },
-    "create_entry": {
-      "default": "Enter this address in the Android Meter app on the phone:\n\n`{webhook_url}`\n\nThe phone must be on the same network as Home Assistant. Once the first frame has arrived, open this integration's options to set the crop and teach it the reading."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Meter settings",
-        "description": "The phone posts to `{webhook_url}`.\n\nLast frame: {frame} pixels. Look at the frame image entity to place the crop: from the top left corner of the first drum window to the bottom right corner of the last one, the windows only. Each window is outlined there once saved.\n\nDigits learnt: {known}. Still to learn: {unknown}. To teach it, type the reading the frame image shows; digits are also learnt on their own as the meter turns.",
+        "description": "The phone posts to `{webhook_url}`; scan the pairing code with its camera and share the text to the app to set it there.\n\nLast frame: {frame} pixels. Look at the frame image entity to place the crop: from the top left corner of the first drum window to the bottom right corner of the last one, the windows only. Each window is outlined there once saved.\n\nDigits learnt: {known}. Still to learn: {unknown}. To teach it, type the reading the frame image shows; digits are also learnt on their own as the meter turns.",
         "data": {
+          "qr_code": "Pairing code",
           "interval": "Interval",
           "torch": "Torch",
           "rotation": "Rotation",

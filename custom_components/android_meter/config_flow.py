@@ -26,7 +26,8 @@
 """Config and options flows.
 
 Setting up only names the meter and hands out the webhook address the app
-needs. Everything else lives in the options, set once a frame has come in
+needs, as a QR code the phone's camera reads and shares to the app, and
+as text. Everything else lives in the options, set once a frame has come in
 and can be looked at: the crop, the counter, and the reading to learn
 from.
 """
@@ -34,6 +35,7 @@ from.
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 import probatio
 from homeassistant.components import webhook
@@ -45,6 +47,9 @@ from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    QrCodeSelector,
+    QrCodeSelectorConfig,
+    QrErrorCorrectionLevel,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -60,6 +65,7 @@ from .const import (
     CONF_HEIGHT,
     CONF_INTERVAL,
     CONF_MAX_FLOW,
+    CONF_QR_CODE,
     CONF_READING,
     CONF_ROTATION,
     CONF_TORCH,
@@ -101,6 +107,24 @@ def _webhook_url(hass: HomeAssistant, webhook_id: str) -> str:
         return webhook.async_generate_path(webhook_id)
 
 
+def _pairing(url: str) -> dict[Any, Any]:
+    """A QR code of the link the app opens to take url, when url is whole.
+
+    Without an address for Home Assistant on the network the url is only
+    a path, which the phone cannot use, and no code is shown.
+    """
+    if not url.startswith(("http://", "https://")):
+        return {}
+    link = f"androidmeter://setup?url={quote(url, safe='')}"
+    return {
+        probatio.Optional(CONF_QR_CODE): QrCodeSelector(
+            QrCodeSelectorConfig(
+                data=link, scale=6, error_correction_level=QrErrorCorrectionLevel.MEDIUM
+            )
+        )
+    }
+
+
 def _number(low: float, high: float, step: float = 1, unit: str | None = None) -> NumberSelector:
     config = NumberSelectorConfig(min=low, max=high, step=step, mode=NumberSelectorMode.BOX)
     if unit is not None:
@@ -113,18 +137,33 @@ class AndroidMeterConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        self._name = DEFAULT_NAME
+        self._webhook_id = ""
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is None:
             return self.async_show_form(
                 step_id="user",
                 data_schema=probatio.Schema({probatio.Required("name", default=DEFAULT_NAME): str}),
             )
-        webhook_id = webhook.async_generate_id()
+        self._name = user_input["name"]
+        self._webhook_id = webhook.async_generate_id()
+        return await self.async_step_pair()
+
+    async def async_step_pair(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Show the phone where to post, as a QR code and as text."""
+        if user_input is None:
+            url = _webhook_url(self.hass, self._webhook_id)
+            return self.async_show_form(
+                step_id="pair",
+                data_schema=probatio.Schema(_pairing(url)),
+                description_placeholders={"webhook_url": url},
+            )
         return self.async_create_entry(
-            title=user_input["name"],
-            data={CONF_WEBHOOK_ID: webhook_id},
+            title=self._name,
+            data={CONF_WEBHOOK_ID: self._webhook_id},
             options=dict(DEFAULTS),
-            description_placeholders={"webhook_url": _webhook_url(self.hass, webhook_id)},
         )
 
     @staticmethod
@@ -170,8 +209,10 @@ class AndroidMeterOptionsFlow(OptionsFlow):
 
         size = meter.frame_size
         known = meter.known()
+        url = _webhook_url(self.hass, entry.data[CONF_WEBHOOK_ID])
         schema = probatio.Schema(
             {
+                **_pairing(url),
                 probatio.Required(CONF_INTERVAL, default=current[CONF_INTERVAL]): _number(
                     MIN_INTERVAL, MAX_INTERVAL, unit="s"
                 ),
@@ -212,7 +253,7 @@ class AndroidMeterOptionsFlow(OptionsFlow):
             data_schema=schema,
             errors=errors,
             description_placeholders={
-                "webhook_url": _webhook_url(self.hass, entry.data[CONF_WEBHOOK_ID]),
+                "webhook_url": url,
                 "frame": "-" if size is None else f"{size[0]} x {size[1]}",
                 "known": " ".join(str(d) for d in known) or "-",
                 "unknown": " ".join(str(d) for d in range(10) if d not in known) or "-",
