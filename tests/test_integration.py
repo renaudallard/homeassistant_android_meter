@@ -289,6 +289,20 @@ async def test_new_decimal_drums_ask_for_the_reading(
     assert hass.states.get("sensor.gas_meter_reading").state == "12345.75"
 
 
+async def test_decimals_right_of_the_crop_are_dropped(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """The crop leaves the last red drum out: the whole reading of the
+    meter, typed as it shows, is taught without it."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    head = {**CROP, "width": 7 * synth.WINDOW[0] + 6 * synth.GAP, "digits": 7, "decimals": 2}
+    await _post(client, entry, synth.frame(1234567, LAYOUT, random.Random(14), light=0.9, shade=0))
+    result = await _options(hass, entry, **head, reading="01234.567")
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert hass.states.get("sensor.gas_meter_reading").state == "1234.56"
+
+
 async def test_the_webhook_refuses_what_is_not_a_frame(
     hass: HomeAssistant, hass_client_no_auth: Any
 ) -> None:
@@ -320,12 +334,12 @@ async def test_options_errors(hass: HomeAssistant, hass_client_no_auth: Any) -> 
     result = await _options(hass, entry, **{**CROP, "digits": 4, "decimals": 5})
     assert result["errors"] == {"base": "too_many_decimals"}
     assert entry.options["x"] == CROP["x"]
-    result = await _options(hass, entry, reading="123.4567")
+    result = await _options(hass, entry, reading="123.4a")
     assert result["errors"] == {"reading": "bad_reading"}
     # The drums were set to 4 above: the error says what this counter takes.
     assert result["description_placeholders"]["digits"] == "4"
     assert result["description_placeholders"]["example"] == "0.123"
-    result = await _options(hass, entry, reading="1234.5678")
+    result = await _options(hass, entry, reading="1234.5678901")
     assert result["errors"] == {"reading": "bad_reading"}
 
 
@@ -557,7 +571,7 @@ async def test_the_device_controls(hass: HomeAssistant, hass_client_no_auth: Any
         await hass.services.async_call(
             "text",
             "set_value",
-            {"entity_id": "text.gas_meter_teach_the_reading", "value": "1234.5678"},
+            {"entity_id": "text.gas_meter_teach_the_reading", "value": ""},
             blocking=True,
         )
     assert err.value.translation_key == "bad_reading"

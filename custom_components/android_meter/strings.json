@@ -31,7 +31,7 @@
       },
       "teach": {
         "title": "Teach the reading",
-        "description": "{frame_image}\n\nType the meter's reading, every drum from left to right, for example `{example}`. Drums left of the crop count too: type them as the meter shows them, and the reading follows them from then on. Read the drums, not the outlines: a drum between two digits counts as the lower one. Each drum of the crop showing a whole digit is learnt.\n\nDigits learnt: {known}. Still to learn: {unknown}. Teach again later, when the meter shows other digits, to learn them sooner; the meter also learns them on its own as it turns.",
+        "description": "{frame_image}\n\nType the meter's reading, every drum from left to right, for example `{example}`. Drums left of the crop count too: type them as the meter shows them, and the reading follows them from then on. Decimal drums right of the crop may be typed as well; they are left out. Read the drums, not the outlines: a drum between two digits counts as the lower one. Each drum of the crop showing a whole digit is learnt.\n\nDigits learnt: {known}. Still to learn: {unknown}. Teach again later, when the meter shows other digits, to learn them sooner; the meter also learns them on its own as it turns.",
         "data": {
           "reading": "Reading shown in this picture",
           "forget": "Forget the digits learnt"
@@ -59,7 +59,7 @@
       }
     },
     "error": {
-      "bad_reading": "This reading does not fit the counter: the crop has {digits} drums, {decimals} of them decimal, so a reading ends like {example}. Type every drum of the meter, decimals included, or correct the decimal drums on the device page.",
+      "bad_reading": "This is not a reading. Type the drums as digits, with a point or a comma before the decimals: the crop has {digits} drums, {decimals} of them decimal, so a reading ends like {example}.",
       "crop_outside": "The crop goes past the edge of the last frame.",
       "no_crop": "Set the crop before teaching a reading.",
       "no_frame": "No frame has arrived yet to teach the reading from.",
@@ -158,7 +158,7 @@
         "step": {
           "init": {
             "title": "Teach the reading",
-            "description": "{frame_image}\n\nType the meter's reading, every drum from left to right, for example `{example}`. Drums left of the crop count too: type them as the meter shows them, and the reading follows them from then on. Read the drums, not the outlines: a drum between two digits counts as the lower one. Each drum of the crop showing a whole digit is learnt.\n\nDigits learnt: {known}. Still to learn: {unknown}. Teach again later, when the meter shows other digits, to learn them sooner; the meter also learns them on its own as it turns.",
+            "description": "{frame_image}\n\nType the meter's reading, every drum from left to right, for example `{example}`. Drums left of the crop count too: type them as the meter shows them, and the reading follows them from then on. Decimal drums right of the crop may be typed as well; they are left out. Read the drums, not the outlines: a drum between two digits counts as the lower one. Each drum of the crop showing a whole digit is learnt.\n\nDigits learnt: {known}. Still to learn: {unknown}. Teach again later, when the meter shows other digits, to learn them sooner; the meter also learns them on its own as it turns.",
             "data": {
               "reading": "Reading shown in this picture",
               "forget": "Forget the digits learnt"
@@ -170,7 +170,7 @@
           }
         },
         "error": {
-          "bad_reading": "This reading does not fit the counter: the crop has {digits} drums, {decimals} of them decimal, so a reading ends like {example}. Type every drum of the meter, decimals included, or correct the decimal drums on the device page.",
+          "bad_reading": "This is not a reading. Type the drums as digits, with a point or a comma before the decimals: the crop has {digits} drums, {decimals} of them decimal, so a reading ends like {example}.",
           "no_reading": "Type the reading the picture shows, or tick Forget the digits learnt.",
           "no_crop": "Set the crop before teaching a reading.",
           "no_frame": "No frame has arrived yet to teach the reading from.",
@@ -197,7 +197,7 @@
       "message": "There cannot be more decimal drums than drums."
     },
     "bad_reading": {
-      "message": "This reading does not fit the counter: the crop has {digits} drums, {decimals} of them decimal, so a reading ends like {example}. Type every drum of the meter, decimals included, or correct the decimal drums on the device page."
+      "message": "This is not a reading. Type the drums as digits, with a point or a comma before the decimals: the crop has {digits} drums, {decimals} of them decimal, so a reading ends like {example}."
     },
     "no_crop": {
       "message": "Set the crop before teaching a reading."

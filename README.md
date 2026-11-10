@@ -178,7 +178,8 @@ in, then goes on learning on its own as the meter turns.
    notice. The screen shows the last picture with each drum outlined. The
    **Teach the reading** box on the device page does the same.
 2. Type the meter's reading, every drum from left to right, for example
-   `01234.567`, drums left of the crop included. A drum caught between two
+   `01234.567`, drums left of the crop included. Decimal drums right of
+   the crop may be typed too; they are left out. A drum caught between two
    digits counts as the lower one.
 3. Save. Every drum of the crop showing a whole digit is learnt, the
    status turns to OK, and **Lock the crop** turns on.

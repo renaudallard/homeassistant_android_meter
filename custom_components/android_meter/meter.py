@@ -157,19 +157,19 @@ class Settings:
 
 
 def parse_reading(text: str, settings: Settings) -> Decimal | None:
-    """The reading typed in the options, or None when the counter cannot
-    show it.
+    """The reading typed in the options, or None when it is not one.
 
-    It is the whole meter, drums left of the crop included: a crop may
-    hold only the last drums when the phone cannot see them all.
+    It is the whole meter: a crop may leave drums out when the phone
+    cannot see them all. Drums left of the crop are kept, and decimals
+    right of it are dropped, as the crop cannot read them.
     """
     text = text.strip()
     if _READING.fullmatch(text) is None:
         return None
     value = Decimal(text.replace(",", "."))
     exponent = value.as_tuple().exponent
-    if not isinstance(exponent, int) or -exponent > settings.decimals:
-        return None
+    if isinstance(exponent, int) and -exponent > settings.decimals:
+        value = value.quantize(Decimal(1).scaleb(-settings.decimals), rounding=ROUND_FLOOR)
     return value
 
 
