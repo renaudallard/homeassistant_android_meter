@@ -564,6 +564,35 @@ async def test_a_reading_typed_during_a_crop_change_is_learnt_on_the_new_crop(
     assert any(meter.patches.counts())
 
 
+async def test_a_frame_read_during_an_unload_leaves_no_timer(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """The unload waits for a frame being read, rather than letting it
+    arm the offline timer of a meter that is gone."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    await _post(client, entry, synth.frame(1234567, LAYOUT, random.Random(12), light=0.9, shade=0))
+    meter = entry.runtime_data
+    release = threading.Event()
+    read = meter._read
+
+    def slow(*args: Any) -> Any:
+        release.wait(10)
+        return read(*args)
+
+    with patch.object(meter, "_read", slow):
+        frame = hass.async_create_task(meter.async_frame(meter.frame))
+        while not meter._lock.locked():
+            await asyncio.sleep(0)
+        unload = hass.async_create_task(hass.config_entries.async_unload(entry.entry_id))
+        for _ in range(20):
+            await asyncio.sleep(0)
+        release.set()
+        await frame
+        assert await unload
+    assert meter._silence is None
+
+
 async def test_a_reading_is_asked_in_repairs(
     hass: HomeAssistant, hass_client: Any, hass_client_no_auth: Any
 ) -> None:

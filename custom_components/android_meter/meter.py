@@ -278,6 +278,8 @@ class Meter:
         self._silence: CALLBACK_TYPE | None = None
         # When the phone last sent a frame, or when the meter started.
         self._heard = dt_util.utcnow()
+        # Unloaded: frames and changes still on their way are dropped.
+        self._closed = False
 
     async def async_load(self) -> None:
         data = await self._store.async_load()
@@ -300,10 +302,14 @@ class Meter:
         self._sync_issue()
 
     async def async_unload(self) -> None:
-        if self._silence is not None:
-            self._silence()
-            self._silence = None
-        await self._store.async_save(self._data())
+        """Store the state once the frame or change under way is done, and
+        take no more, which would arm the timer and the store again."""
+        async with self._lock:
+            self._closed = True
+            if self._silence is not None:
+                self._silence()
+                self._silence = None
+            await self._store.async_save(self._data())
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -424,6 +430,8 @@ class Meter:
     async def async_frame(self, data: bytes) -> None:
         """Take a frame from the phone."""
         async with self._lock:
+            if self._closed:
+                return
             now = dt_util.utcnow()
             self._heard = now
             size, status, read = await self.hass.async_add_executor_job(
@@ -478,6 +486,8 @@ class Meter:
         that a crop changed meanwhile is kept.
         """
         async with self._lock:
+            if self._closed:
+                return
             await self._configure({**self.options, **(changes or {})}, reading, forget, picture)
         self._notify()
 
@@ -547,6 +557,8 @@ class Meter:
         reading being taught, or another change, is waited for.
         """
         async with self._lock:
+            if self._closed:
+                return None
             given = set(changes)
             changed = {
                 key: value for key, value in changes.items() if self.options.get(key) != value
