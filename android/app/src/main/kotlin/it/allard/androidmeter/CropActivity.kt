@@ -79,8 +79,17 @@ class CropActivity : Activity() {
         column.addView(find, MATCH_PARENT, WRAP_CONTENT)
         column.addView(view, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
         column.addView(stepper(R.string.drums, { view.digits.toString() }) { d ->
-            view.digits = (view.digits + d).coerceIn(1, 12)
-            decimals = decimals.coerceAtMost(view.digits)
+            // A drum more or less moves the box's right edge by one step,
+            // the windows keeping their size: drums the counter finder could
+            // not see at the end are added this way.
+            val pitch = (view.box.width() + view.gap) / view.digits
+            val digits = (view.digits + d).coerceIn(1, 12)
+            val right = view.box.left + digits * pitch - view.gap
+            if (right <= picture.width && right > view.box.left) {
+                view.digits = digits
+                view.box.right = right
+                decimals = decimals.coerceAtMost(view.digits)
+            }
         })
         column.addView(stepper(R.string.decimals, { decimals.toString() }) { d ->
             decimals = (decimals + d).coerceIn(0, minOf(6, view.digits))
