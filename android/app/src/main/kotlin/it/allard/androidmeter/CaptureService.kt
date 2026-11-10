@@ -122,12 +122,14 @@ class CaptureService : Service() {
             it.setReferenceCounted(false)
         }
         running = true
+        Orientation.start(this)
         Status.running(true)
         handler.post(tick)
         return START_STICKY
     }
 
     override fun onDestroy() {
+        if (running) Orientation.stop()
         running = false
         handler.removeCallbacksAndMessages(null)
         handler.post { shot?.cancel() }

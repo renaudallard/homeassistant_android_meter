@@ -34,7 +34,6 @@ import android.app.AlertDialog
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
 import android.hardware.camera2.CameraCharacteristics
 import android.net.Uri
 import android.os.Build
@@ -72,6 +71,7 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var picture: ImageView
     private lateinit var unlimited: Button
+    private var shownPicture: ByteArray? = null
     private var lenses: List<Lens> = emptyList()
     private var thread: HandlerThread? = null
     @Volatile private var single: Shot? = null
@@ -166,11 +166,13 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        Orientation.start(this)
         Status.listen(::refresh)
         refresh()
     }
 
     override fun onPause() {
+        Orientation.stop()
         Status.listen(null)
         save()
         super.onPause()
@@ -232,9 +234,10 @@ class MainActivity : Activity() {
         val power = getSystemService(PowerManager::class.java)
         unlimited.visibility =
             if (power.isIgnoringBatteryOptimizations(packageName)) View.GONE else View.VISIBLE
-        Status.picture?.let { jpeg ->
-            val options = BitmapFactory.Options().apply { inSampleSize = 4 }
-            picture.setImageBitmap(BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, options))
+        val jpeg = Status.picture
+        if (jpeg != null && jpeg !== shownPicture) {
+            shownPicture = jpeg
+            decodeUpright(jpeg)?.let { picture.setImageBitmap(it.bitmap) }
         }
     }
 

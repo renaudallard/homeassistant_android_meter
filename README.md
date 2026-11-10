@@ -136,7 +136,7 @@ Android SDK platform 37).
    the address in the app works too.
 4. **In the app**, pick the camera (the list shows how close each one
    focuses) and press **Take one picture**. The picture is shown in the app
-   and sent to Home Assistant.
+   and sent to Home Assistant, upright however the phone is held.
 5. **In Home Assistant**, open the meter's device page. Next to the
    **Frame** image, the Configuration section has the controls for the
    crop:

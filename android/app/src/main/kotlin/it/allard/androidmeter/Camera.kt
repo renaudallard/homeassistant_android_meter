@@ -89,6 +89,7 @@ class Shot(
     private var reader: ImageReader? = null
     private var texture: SurfaceTexture? = null
     private var preview: Surface? = null
+    private var orientation = 0
     private var frames = 0
     private var taken = false
     private var finished = false
@@ -98,7 +99,9 @@ class Shot(
     fun start() {
         handler.postDelayed(timeout, TIMEOUT_MS)
         try {
-            val size = jpegSize(manager.getCameraCharacteristics(cameraId))
+            val chars = manager.getCameraCharacteristics(cameraId)
+            val size = jpegSize(chars)
+            orientation = jpegOrientation(chars)
             val reader = ImageReader.newInstance(size.width, size.height, ImageFormat.JPEG, 1)
             this.reader = reader
             reader.setOnImageAvailableListener({ r ->
@@ -117,6 +120,18 @@ class Shot(
         } catch (e: Exception) {
             finish(Result.failure(e))
         }
+    }
+
+    /*
+     * The turn that makes the picture upright for the way the phone is held,
+     * as the camera documentation computes it: the sensor is mounted at an
+     * angle to the phone, and a front camera mirrors the turn.
+     */
+    private fun jpegOrientation(chars: CameraCharacteristics): Int {
+        val sensor = chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
+        val held = Orientation.degrees
+        val front = chars.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT
+        return ((if (front) sensor - held else sensor + held) % 360 + 360) % 360
     }
 
     /*
@@ -213,7 +228,7 @@ class Shot(
             try {
                 val still = request(CameraDevice.TEMPLATE_STILL_CAPTURE, reader!!.surface)
                 still.set(CaptureRequest.JPEG_QUALITY, 90.toByte())
-                still.set(CaptureRequest.JPEG_ORIENTATION, 0)
+                still.set(CaptureRequest.JPEG_ORIENTATION, orientation)
                 s.capture(still.build(), null, handler)
             } catch (e: Exception) {
                 finish(Result.failure(e))
