@@ -166,10 +166,11 @@ class Read:
 
     value is the reading in units of the last drum, or None when the frame
     was refused, and ceiling the highest reading as likely as it: the meter
-    stands somewhere from value to ceiling. refused says why a frame was: "unreadable" when no drum could
-    be trusted, "implausible" when the trusted ones show a value the meter
-    cannot have reached. nearest is the closest known digit of each cell,
-    trusted whether the read relied on it.
+    stands somewhere from value to ceiling. refused says why a frame was:
+    "unreadable" when no drum could be trusted, "implausible" when the
+    trusted ones show a value the meter cannot have reached. nearest is the
+    closest known digit of each cell, trusted whether the read relied on
+    it.
     """
 
     value: int | None
