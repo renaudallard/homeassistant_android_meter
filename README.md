@@ -185,7 +185,8 @@ in, then goes on learning on its own as the meter turns.
    the crop may be typed too; they are left out. A drum caught between two
    digits counts as the lower one.
 3. Save. Every drum of the crop showing a whole digit is learnt, the
-   status turns to OK, and **Lock the crop** turns on.
+   status turns to OK, and **Lock the crop** turns on. A status of
+   Waiting for the phone or Phone offline stays until the next picture.
 
 The screen lists the digits learnt and the ones still to learn. On the
 device page, the **Learnt digits** sensor counts them and **Digits to
