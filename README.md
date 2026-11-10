@@ -135,7 +135,10 @@ Android SDK platform 37).
    webhook's secret. The code is also in Configure > Phone and pairing. Typing
    the address in the app works too.
 4. **In the app**, pick the camera (the list shows how close each one
-   focuses) and press **Take one picture**. The picture is shown in the app
+   focuses) and press **Take one picture**. A phone close to the meter
+   wants the camera that focuses closest, often the wide one, which also
+   sees the most. Some phones, Motorola's among them, leave their extra
+   back cameras out of Android's list; the app offers them all the same. The picture is shown in the app
    and sent to Home Assistant, upright however the phone is held.
 5. **Set the crop on the phone**: press **Set the crop** in the app, then
    **Find the counter**: Home Assistant looks for the row of drums on the

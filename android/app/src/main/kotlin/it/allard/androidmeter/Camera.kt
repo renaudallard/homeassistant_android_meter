@@ -31,6 +31,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.ImageFormat
 import android.graphics.SurfaceTexture
+import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
@@ -57,17 +58,40 @@ private const val MAX_FRAMES = 60
 
 private const val TIMEOUT_MS = 15_000L
 
+/*
+ * Camera numbers tried beyond Android's list. Some phones, Qualcomm based
+ * ones such as Motorola's, leave their extra back cameras out of it, the
+ * wide one that focuses closest among them, though any app can open them.
+ */
+private const val PROBED_IDS = 16
+
 /** One camera as offered to the user. */
 data class Lens(val id: String, val facing: Int?, val focusCm: Int?)
 
 fun lenses(context: Context): List<Lens> {
     val manager = context.getSystemService(CameraManager::class.java)
-    return manager.cameraIdList.map { id ->
-        val chars = manager.getCameraCharacteristics(id)
+    val listed = manager.cameraIdList.toList()
+    val hidden = (0 until PROBED_IDS).map { it.toString() }.filter { it !in listed }
+    return (listed + hidden).mapNotNull { id ->
+        val chars = try {
+            manager.getCameraCharacteristics(id)
+        } catch (e: IllegalArgumentException) {
+            return@mapNotNull null
+        } catch (e: CameraAccessException) {
+            return@mapNotNull null
+        }
+        if (id !in listed && !single(chars)) return@mapNotNull null
         val diopters = chars.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
         val focus = if (diopters == null || diopters <= 0f) null else Math.round(100f / diopters)
         Lens(id, chars.get(CameraCharacteristics.LENS_FACING), focus)
     }
+}
+
+/* An ordinary camera of its own, not several shown as one. */
+private fun single(chars: CameraCharacteristics): Boolean {
+    val caps = chars.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES) ?: return false
+    return CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE in caps &&
+        CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_LOGICAL_MULTI_CAMERA !in caps
 }
 
 /**
