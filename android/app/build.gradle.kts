@@ -10,8 +10,8 @@ android {
         applicationId = "it.allard.androidmeter"
         minSdk = 28
         targetSdk = 37
-        versionCode = 11
-        versionName = "0.1.10"
+        versionCode = 12
+        versionName = "0.1.11"
     }
 
     /* Release builds are signed when given a keystore. */
