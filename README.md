@@ -137,19 +137,18 @@ Android SDK platform 37).
 4. **In the app**, pick the camera (the list shows how close each one
    focuses) and press **Take one picture**. The picture is shown in the app
    and sent to Home Assistant, upright however the phone is held.
-5. **In Home Assistant**, open the meter's device page. Next to the
-   **Frame** image, the Configuration section has the controls for the
-   crop:
-   - **Rotation**, so the digits stand upright;
-   - **Crop left, top, width and height**, sliders over the picture, from
-     the top left corner of the first window to the bottom right corner of
-     the last one, windows only;
-   - **Gap between windows**, the width of the housing between two windows;
-   - **Drums** and **Decimal drums** (for example 8 and 3 for 00123.456).
+5. **Set the crop on the phone**: press **Set the crop** in the app. It
+   shows the last picture with a yellow box: drag it over the drum
+   windows, moving it from its middle and sizing it from its corners, and
+   set the drums, decimal drums and gap with the − and + buttons until each
+   green frame sits on one window. **Save the crop** sends it to Home
+   Assistant, which reads the next pictures with it.
 
-   Each change redraws the Frame image with every window outlined: move
-   the sliders until each outline sits on its window. Turning the picture
-   starts the crop anew.
+   The meter's device page has the same settings as controls, next to the
+   **Frame** image, for fine tuning: **Rotation**, **Crop left, top,
+   width and height**, **Gap between windows**, **Drums** and **Decimal
+   drums**. Each change redraws the Frame image with every window
+   outlined. Turning the picture starts the crop anew.
 6. **Teach the reading**, see below. Settings also shows a Repairs notice,
    **Android Meter needs a reading**, until it is done.
 7. **Start** the app. It keeps taking pictures with the screen off, as a
@@ -177,9 +176,9 @@ shows other digits, gets all ten sooner. **Forget the digits learnt**
 starts over, for instance after a wrong reading was typed.
 
 A change of crop forgets the digits learnt, since they no longer match the
-windows. **Lock the crop** keeps a slip on the device page from doing that:
-while it is on, the crop and counter controls refuse changes. Turn it off to
-move the crop, then teach the reading again.
+windows. **Lock the crop** keeps a slip from doing that: while it is on, the
+crop and counter controls and the phone's crop editor are refused. Turn it
+off to move the crop, then teach the reading again.
 
 ## Settings
 

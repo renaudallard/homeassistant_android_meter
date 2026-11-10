@@ -40,8 +40,8 @@ const val MAX_INTERVAL = 3600
 
 private const val MAX_REPLY = 64 * 1024
 
-/** What Home Assistant answers a frame with. */
-data class Reply(val interval: Int, val torch: Boolean, val status: String)
+/** What Home Assistant answers a frame with; crop is the crop in force, as sent. */
+data class Reply(val interval: Int, val torch: Boolean, val status: String, val crop: String?)
 
 fun validUrl(url: String): Boolean =
     url.startsWith("http://") || url.startsWith("https://")
@@ -101,12 +101,41 @@ private fun read(input: InputStream): String {
     return out.toString(Charsets.UTF_8.name())
 }
 
+/** What Home Assistant answers a crop with: its error, or null, and the crop in force. */
+data class CropReply(val error: String?, val crop: String?)
+
+/** Sends a crop drawn on the phone. Blocks, like upload. */
+fun sendCrop(url: String, crop: JSONObject): CropReply {
+    val connection = URL(url).openConnection() as HttpURLConnection
+    try {
+        val body = JSONObject().put("crop", crop).toString().toByteArray(Charsets.UTF_8)
+        connection.requestMethod = "POST"
+        connection.instanceFollowRedirects = false
+        connection.connectTimeout = 15_000
+        connection.readTimeout = 30_000
+        connection.doOutput = true
+        connection.setFixedLengthStreamingMode(body.size)
+        connection.setRequestProperty("Content-Type", "application/json")
+        connection.outputStream.use { it.write(body) }
+        val code = connection.responseCode
+        if (code != HttpURLConnection.HTTP_OK) throw IOException("HTTP $code")
+        val json = JSONObject(connection.inputStream.use { read(it) })
+        val error = if (json.isNull("error")) null else json.optString("error").take(32)
+        return CropReply(error, json.optJSONObject("crop")?.toString())
+    } catch (e: JSONException) {
+        throw IOException("unexpected answer")
+    } finally {
+        connection.disconnect()
+    }
+}
+
 fun parse(body: String): Reply {
     try {
         val json = JSONObject(body)
         val interval = json.getInt("interval").coerceIn(MIN_INTERVAL, MAX_INTERVAL)
         val status = json.optString("status", "?").take(32)
-        return Reply(interval, json.getBoolean("torch"), status)
+        val crop = json.optJSONObject("crop")?.toString()
+        return Reply(interval, json.getBoolean("torch"), status, crop)
     } catch (e: JSONException) {
         throw IOException("unexpected answer")
     }

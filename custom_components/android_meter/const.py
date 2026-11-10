@@ -67,10 +67,6 @@ DEFAULTS: Final[dict[str, int | float | bool]] = {
     CONF_MAX_FLOW: 6.0,
 }
 
-# The options that decide what a cell is: changing one makes the digits
-# learnt so far worthless.
-GEOMETRY: Final = (CONF_ROTATION, CONF_X, CONF_Y, CONF_WIDTH, CONF_HEIGHT, CONF_GAP, CONF_DIGITS)
-
 ROTATIONS: Final = (0, 90, 180, 270)
 MIN_INTERVAL: Final = 10
 MAX_INTERVAL: Final = 3600
@@ -79,6 +75,8 @@ MAX_DECIMALS: Final = 6
 
 # The app sends a JPEG of a few hundred kilobytes; this is far above it.
 MAX_FRAME_BYTES: Final = 8 * 1024 * 1024
+# A crop drawn on the phone is a few dozen bytes of JSON.
+MAX_MESSAGE_BYTES: Final = 4096
 
 # Without a frame for this many intervals, and at least SILENCE_FLOOR
 # seconds, the phone is taken for offline.

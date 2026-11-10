@@ -35,6 +35,7 @@ it is built for.
 from __future__ import annotations
 
 import asyncio
+import json
 import math
 import re
 from collections.abc import Mapping
@@ -66,7 +67,11 @@ from .const import (
     CONF_Y,
     DEFAULTS,
     DOMAIN,
+    MAX_DECIMALS,
+    MAX_DIGITS,
     MAX_FRAME_BYTES,
+    MAX_MESSAGE_BYTES,
+    ROTATIONS,
     SILENCE_FLOOR,
     SILENCE_INTERVALS,
     STATUS_BAD_CROP,
@@ -80,6 +85,23 @@ from .const import (
 )
 
 SAVE_DELAY = 60
+
+# What the crop and counter controls, and the phone's crop editor, change.
+CROP_BOX = (CONF_X, CONF_Y, CONF_WIDTH, CONF_HEIGHT)
+CROP_FIELDS = (CONF_ROTATION, *CROP_BOX, CONF_GAP, CONF_DIGITS, CONF_DECIMALS)
+# A change of these forgets the digits learnt or what a reading means, so
+# a locked crop refuses them.
+LOCKED = CROP_FIELDS
+_CROP_RANGES = {
+    CONF_ROTATION: (0, 270),
+    CONF_X: (0, 20000),
+    CONF_Y: (0, 20000),
+    CONF_WIDTH: (0, 20000),
+    CONF_HEIGHT: (0, 20000),
+    CONF_GAP: (0, 2000),
+    CONF_DIGITS: (1, MAX_DIGITS),
+    CONF_DECIMALS: (0, MAX_DECIMALS),
+}
 
 _READING = re.compile(r"[0-9]{1,12}(?:[.,][0-9]{1,6})?")
 
@@ -187,6 +209,25 @@ def _units(value: Decimal, decimals: int, rounding: str) -> int:
 
 def _volume(units: int, decimals: int) -> Decimal:
     return Decimal(units).scaleb(-decimals)
+
+
+def _crop_message(body: bytes) -> dict[str, int] | None:
+    """The crop fields of a message from the phone, each a whole number in
+    its range, or None when the message is anything else."""
+    try:
+        message = json.loads(body)
+    except ValueError:
+        return None
+    crop = message.get("crop") if isinstance(message, dict) else None
+    if not isinstance(crop, dict) or not crop or not set(crop) <= set(CROP_FIELDS):
+        return None
+    for key, value in crop.items():
+        low, high = _CROP_RANGES[key]
+        if type(value) is not int or not low <= value <= high:
+            return None
+    if CONF_ROTATION in crop and crop[CONF_ROTATION] not in ROTATIONS:
+        return None
+    return dict(crop)
 
 
 def _time(value: object) -> datetime | None:
@@ -427,6 +468,39 @@ class Meter:
             self._arm_silence()
         self._notify()
 
+    async def async_change(self, changes: Mapping[str, Any]) -> str | None:
+        """Apply option changes from the device page or the phone.
+
+        Only real changes count. A crop locked by a reading taught is
+        refused, and so is one that does not fit the last picture; turning
+        the picture without giving a crop clears the crop, which is
+        measured on the turned picture. What is applied is stored in the
+        entry's options too. Returns the error, or None.
+        """
+        given = set(changes)
+        changed = {key: value for key, value in changes.items() if self.options.get(key) != value}
+        if not changed:
+            return None
+        if self.locked and any(key in LOCKED for key in changed):
+            return "crop_locked"
+        if CONF_ROTATION in changed and not given & set(CROP_BOX):
+            changed.update(dict.fromkeys(CROP_BOX, 0))
+        options = {**self.options, **changed}
+        error = frame_error(Settings.from_options(options), self.frame_size)
+        if error is not None:
+            return error
+        await self.async_configure(options)
+        entry = self.hass.config_entries.async_get_entry(self.entry_id)
+        if entry is not None:
+            self.hass.config_entries.async_update_entry(entry, options=options)
+        return None
+
+    def crop(self) -> dict[str, Any]:
+        """The crop and counter in force, for the phone's crop editor."""
+        view: dict[str, Any] = {key: int(self.options[key]) for key in CROP_FIELDS}
+        view["locked"] = self.locked
+        return view
+
     @callback
     def async_set_locked(self, locked: bool) -> None:
         """Lock the crop against changes, or let it be changed."""
@@ -437,7 +511,13 @@ class Meter:
     async def async_webhook(
         self, hass: HomeAssistant, webhook_id: str, request: web.Request
     ) -> web.Response:
-        """A frame from the phone. The answer tells it when to send the next."""
+        """A frame from the phone, or a crop drawn on it.
+
+        The answer tells the phone when to send the next frame, and the
+        crop in force for its editor.
+        """
+        if request.content_type == "application/json":
+            return await self._async_crop_from_phone(request)
         if request.content_type != "image/jpeg":
             return web.Response(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
         length = request.content_length
@@ -454,5 +534,20 @@ class Meter:
                 "interval": self.settings.interval,
                 "torch": self.settings.torch,
                 "status": self.status,
+                "crop": self.crop(),
             }
         )
+
+    async def _async_crop_from_phone(self, request: web.Request) -> web.Response:
+        """Apply {"crop": {...}} drawn on the phone, on the picture as sent."""
+        length = request.content_length
+        if length is not None and length > MAX_MESSAGE_BYTES:
+            return web.Response(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+        body = await request.read()
+        if len(body) > MAX_MESSAGE_BYTES:
+            return web.Response(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+        changes = _crop_message(body)
+        if changes is None:
+            return web.json_response({"error": "bad_message"}, status=HTTPStatus.BAD_REQUEST)
+        error = await self.async_change(changes)
+        return web.json_response({"error": error, "crop": self.crop()})

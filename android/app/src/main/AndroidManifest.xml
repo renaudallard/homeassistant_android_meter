@@ -50,6 +50,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".CropActivity"
+            android:exported="false" />
+
         <service
             android:name=".CaptureService"
             android:exported="false"

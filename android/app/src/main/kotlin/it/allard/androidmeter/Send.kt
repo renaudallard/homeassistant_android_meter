@@ -61,6 +61,7 @@ fun shootAndSend(context: Context, handler: Handler, once: Boolean, then: (Int) 
             val reply = upload(settings.url, jpeg)
             settings.interval = reply.interval
             settings.torch = reply.torch
+            reply.crop?.let { settings.crop = it }
             Status.say(
                 if (once) context.getString(R.string.sent_once, now, reply.status)
                 else context.getString(R.string.sent, now, reply.status, reply.interval)

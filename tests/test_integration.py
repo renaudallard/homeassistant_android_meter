@@ -187,7 +187,12 @@ async def test_a_frame_is_read_once_taught(
 
     response = await _post(client, entry, synth.frame(89012345, LAYOUT, rng, light=0.9, shade=0))
     assert response.status == HTTPStatus.OK
-    assert await response.json() == {"interval": 60, "torch": True, "status": "no_crop"}
+    reply = await response.json()
+    assert reply["interval"] == 60
+    assert reply["torch"] is True
+    assert reply["status"] == "no_crop"
+    assert reply["crop"]["width"] == 0
+    assert reply["crop"]["locked"] is False
     assert hass.states.get("sensor.gas_meter_status").state == "no_crop"
     assert hass.states.get("sensor.gas_meter_reading").state == "unknown"
 
@@ -438,3 +443,43 @@ async def test_the_device_controls(hass: HomeAssistant, hass_client_no_auth: Any
     await hass.async_block_till_done()
     assert hass.states.get("sensor.gas_meter_learnt_digits").state == "0"
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"
+
+
+async def test_a_crop_drawn_on_the_phone(hass: HomeAssistant, hass_client_no_auth: Any) -> None:
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    await _post(client, entry, synth.frame(1234567, LAYOUT, random.Random(9), light=0.9, shade=0))
+    url = f"/api/webhook/{entry.data['webhook_id']}"
+
+    response = await client.post(url, json={"crop": {**CROP, "rotation": 0}})
+    assert response.status == HTTPStatus.OK
+    reply = await response.json()
+    assert reply["error"] is None
+    assert reply["crop"]["width"] == CROP["width"]
+    assert entry.options["x"] == CROP["x"]
+    assert hass.states.get("number.gas_meter_crop_left").state == str(float(CROP["x"]))
+
+    response = await client.post(url, json={"crop": {**CROP, "x": 600}})
+    assert (await response.json())["error"] == "crop_outside"
+    assert entry.options["x"] == CROP["x"]
+
+    for bad in (
+        {"crop": {"x": "1"}},
+        {"crop": {"x": -1}},
+        {"crop": {"rotation": 45}},
+        {"crop": {"colour": 1}},
+        {"crop": {}},
+        [],
+        {"x": 1},
+    ):
+        response = await client.post(url, json=bad)
+        assert response.status == HTTPStatus.BAD_REQUEST
+    response = await client.post(url, data=b"{", headers={"Content-Type": "application/json"})
+    assert response.status == HTTPStatus.BAD_REQUEST
+
+    await _options(hass, entry, reading="01234.567")
+    response = await client.post(url, json={"crop": {**CROP, "x": CROP["x"] + 1}})
+    reply = await response.json()
+    assert reply["error"] == "crop_locked"
+    assert reply["crop"]["locked"] is True
+    assert entry.options["x"] == CROP["x"]

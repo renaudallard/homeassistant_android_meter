@@ -71,6 +71,7 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var picture: ImageView
     private lateinit var unlimited: Button
+    private lateinit var crop: Button
     private var shownPicture: ByteArray? = null
     private var lenses: List<Lens> = emptyList()
     private var thread: HandlerThread? = null
@@ -103,6 +104,8 @@ class MainActivity : Activity() {
         column.addView(camera, MATCH_PARENT, WRAP_CONTENT)
         column.addView(toggle, MATCH_PARENT, WRAP_CONTENT)
         column.addView(shoot, MATCH_PARENT, WRAP_CONTENT)
+        crop = Button(this).apply { text = getString(R.string.crop_button) }
+        column.addView(crop, MATCH_PARENT, WRAP_CONTENT)
         column.addView(status, MATCH_PARENT, WRAP_CONTENT)
         column.addView(TextView(this).apply { text = getString(R.string.charger) })
         unlimited = Button(this).apply { text = getString(R.string.battery) }
@@ -114,6 +117,7 @@ class MainActivity : Activity() {
         shoot.setOnClickListener { withPermissions(::shootOnce) }
         unlimited.setOnClickListener { askUnlimited() }
         pasteButton.setOnClickListener { paste() }
+        crop.setOnClickListener { cropIt() }
         loadLenses()
         if (savedInstanceState == null) fromLink(intent)
     }
@@ -286,6 +290,19 @@ class MainActivity : Activity() {
 
     private fun stop() {
         startService(Intent(this, CaptureService::class.java).setAction(CaptureService.ACTION_STOP))
+    }
+
+    /* The crop is drawn on the last picture, sent to Home Assistant. */
+    private fun cropIt() {
+        if (!save()) {
+            status.text = getString(R.string.bad_url)
+            return
+        }
+        if (Status.picture == null) {
+            status.text = getString(R.string.no_picture)
+            return
+        }
+        startActivity(Intent(this, CropActivity::class.java))
     }
 
     private fun shootOnce() {

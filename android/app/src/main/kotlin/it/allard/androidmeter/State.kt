@@ -56,6 +56,11 @@ class Settings(context: Context) {
     var torch: Boolean
         get() = prefs.getBoolean("torch", true)
         set(value) = prefs.edit().putBoolean("torch", value).apply()
+
+    /* The crop Home Assistant last reported, as JSON, for the crop editor. */
+    var crop: String?
+        get() = prefs.getString("crop", null)
+        set(value) = prefs.edit().putString("crop", value).apply()
 }
 
 /**

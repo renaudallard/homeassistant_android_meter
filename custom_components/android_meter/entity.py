@@ -34,17 +34,8 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 
-from .const import (
-    CONF_DECIMALS,
-    CONF_HEIGHT,
-    CONF_ROTATION,
-    CONF_WIDTH,
-    CONF_X,
-    CONF_Y,
-    DOMAIN,
-    GEOMETRY,
-)
-from .meter import Meter, Settings, frame_error
+from .const import DOMAIN
+from .meter import Meter
 
 
 class MeterEntity(Entity):
@@ -68,25 +59,7 @@ class MeterEntity(Entity):
         self.async_on_remove(self.meter.async_add_listener(self.async_write_ha_state))
 
     async def _async_apply(self, **changes: Any) -> None:
-        """Apply option changes from a control on the device page.
-
-        Only real changes count. A crop locked by a reading taught is
-        refused, and so is one that does not fit the last picture; turning
-        the picture clears the crop. What is applied is stored in the
-        entry's options too.
-        """
-        meter = self.meter
-        changes = {key: value for key, value in changes.items() if meter.options.get(key) != value}
-        if not changes:
-            return
-        if meter.locked and any(key in (*GEOMETRY, CONF_DECIMALS) for key in changes):
-            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="crop_locked")
-        if CONF_ROTATION in changes:
-            # The crop is measured on the turned picture: a new turn starts it anew.
-            changes.update({CONF_X: 0, CONF_Y: 0, CONF_WIDTH: 0, CONF_HEIGHT: 0})
-        options = {**meter.options, **changes}
-        error = frame_error(Settings.from_options(options), meter.frame_size)
+        """Apply option changes from a control on the device page."""
+        error = await self.meter.async_change(changes)
         if error is not None:
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key=error)
-        await meter.async_configure(options)
-        self.hass.config_entries.async_update_entry(self._entry, options=options)
