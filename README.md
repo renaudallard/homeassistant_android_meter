@@ -269,7 +269,10 @@ cost of the year and of the month.
 - Android only lets an app start the camera from something the user did.
   After a reboot, an update of the app, or Android stopping it, the app
   therefore cannot start again on its own: it posts **The meter watch
-  stopped**, and a tap on that notification starts it again.
+  stopped**, and a tap on that notification starts it again. Should a
+  permission be missing, taken back or new with an update of Android, the
+  notification opens the app to ask for it first; one taken back after
+  the notification came up brings it up again, to do so.
 - A reading typed lower than the current one is a correction. Up to 10%
   lower, Home Assistant counts the difference as negative consumption and
   logs once that the sensor is not strictly increasing. More than 10%

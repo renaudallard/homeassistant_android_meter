@@ -83,6 +83,11 @@ class MainActivity : Activity() {
     private var single: Shot? = null
     private var shooting = false
     private var pending: (() -> Unit)? = null
+    /*
+     * Opened from the Resume notification: start once in front. Any app may
+     * open this screen so, which only ever resumes a watch the user left on.
+     */
+    private var resuming = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -125,12 +130,12 @@ class MainActivity : Activity() {
         pasteButton.setOnClickListener { paste() }
         crop.setOnClickListener { cropIt() }
         loadLenses()
-        if (savedInstanceState == null) fromLink(intent)
+        if (savedInstanceState == null) fromIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        fromLink(intent)
+        fromIntent(intent)
     }
 
     /*
@@ -141,10 +146,11 @@ class MainActivity : Activity() {
      * user agrees to the host it names; the rest of it is the webhook's
      * secret and stays off the screen.
      */
-    private fun fromLink(intent: Intent?) {
+    private fun fromIntent(intent: Intent?) {
         when (intent?.action) {
             Intent.ACTION_VIEW -> intent.dataString?.let { offer(it) }
             Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)?.let { offer(it) }
+            ACTION_RESUME -> resuming = true
         }
     }
 
@@ -179,6 +185,10 @@ class MainActivity : Activity() {
         Orientation.start(this)
         Status.listen(::refresh)
         refresh()
+        if (resuming) {
+            resuming = false
+            if (!Status.running && settings.wanted) withPermissions(::start)
+        }
     }
 
     override fun onPause() {
@@ -266,7 +276,7 @@ class MainActivity : Activity() {
             Status.say(getString(R.string.bad_url))
             return
         }
-        val asked = needed.toMutableList()
+        val asked = CaptureService.needed.toMutableList()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             asked += Manifest.permission.POST_NOTIFICATIONS
         }
@@ -284,20 +294,12 @@ class MainActivity : Activity() {
         val action = pending
         pending = null
         if (code != PERMISSIONS || action == null) return
-        if (needed.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }) {
+        if (CaptureService.allowed(this)) {
             action()
         } else {
             Status.say(getString(R.string.denied))
         }
     }
-
-    /* The camera, and from Android 17 the local network Home Assistant is on. */
-    private val needed: List<String>
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
-            listOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_LOCAL_NETWORK)
-        } else {
-            listOf(Manifest.permission.CAMERA)
-        }
 
     private fun start() {
         startForegroundService(Intent(this, CaptureService::class.java).setAction(CaptureService.ACTION_START))
@@ -337,5 +339,9 @@ class MainActivity : Activity() {
                 }
             }
         }
+    }
+
+    companion object {
+        const val ACTION_RESUME = "it.allard.androidmeter.RESUME"
     }
 }

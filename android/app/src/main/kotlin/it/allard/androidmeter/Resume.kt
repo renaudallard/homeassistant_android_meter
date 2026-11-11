@@ -40,7 +40,8 @@ import android.content.Intent
  *
  * Tapping it starts the service straight from the notification, which is
  * one of the few ways Android lets a service started outside the app use
- * the camera.
+ * the camera. Should a permission be missing, it opens the app instead,
+ * which asks for it, then starts.
  */
 object Resume {
     private const val CHANNEL = "resume"
@@ -55,12 +56,21 @@ object Resume {
                 NotificationManager.IMPORTANCE_DEFAULT,
             )
         )
-        val start = PendingIntent.getForegroundService(
-            context,
-            0,
-            Intent(context, CaptureService::class.java).setAction(CaptureService.ACTION_START),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
+        val start = if (CaptureService.allowed(context)) {
+            PendingIntent.getForegroundService(
+                context,
+                0,
+                Intent(context, CaptureService::class.java).setAction(CaptureService.ACTION_START),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+        } else {
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_RESUME),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
         val notification = Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.resume_title))

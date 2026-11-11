@@ -32,7 +32,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
@@ -116,6 +119,12 @@ class CaptureService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        if (!allowed(this)) {
+            /* A permission taken back since Start: the app asks for it again. */
+            Resume.offer(this)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         Resume.clear(this)
         val power = getSystemService(PowerManager::class.java)
         wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AndroidMeter:capture").also {
@@ -173,5 +182,16 @@ class CaptureService : Service() {
         private const val CHANNEL = "capture"
         private const val NOTIFICATION = 1
         private const val WAKE_MARGIN = 120
+
+        /* The camera, and from Android 17 the local network Home Assistant is on. */
+        val needed: List<String>
+            get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+                listOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_LOCAL_NETWORK)
+            } else {
+                listOf(Manifest.permission.CAMERA)
+            }
+
+        fun allowed(context: Context): Boolean =
+            needed.all { context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
     }
 }
