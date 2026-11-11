@@ -90,12 +90,16 @@ def test_open_frame_refuses_what_is_not_a_jpeg() -> None:
             r.open_frame(data, 0)
 
 
-def test_open_frame_refuses_a_huge_frame(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(r, "MAX_PIXELS", 100)
-    jpeg = io.BytesIO()
-    Image.new("RGB", (20, 20)).save(jpeg, "JPEG")
-    with pytest.raises(r.FrameError):
-        r.open_frame(jpeg.getvalue(), 0)
+def test_open_frame_takes_up_to_12_megapixels() -> None:
+    """A JPEG of a few hundred bytes can say it is this large."""
+    for size, fits in (((4000, 3000), True), ((4000, 3001), False)):
+        jpeg = io.BytesIO()
+        Image.new("L", size).save(jpeg, "JPEG")
+        if fits:
+            assert r.open_frame(jpeg.getvalue(), 0).size == size
+        else:
+            with pytest.raises(r.FrameError):
+                r.open_frame(jpeg.getvalue(), 0)
 
 
 def test_open_frame_refuses_a_progressive_jpeg() -> None:

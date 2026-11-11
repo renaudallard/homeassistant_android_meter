@@ -58,8 +58,10 @@ _FULL = (1 << _BITS) - 1
 _FIRST_COLUMN = sum(1 << (_BITS - 1 - y * CELL_W) for y in range(CELL_H))
 _LAST_COLUMN = sum(1 << (_BITS - CELL_W - y * CELL_W) for y in range(CELL_H))
 
-# A frame with more pixels than this is refused before it is decoded.
-MAX_PIXELS = 40_000_000
+# A frame with more pixels than this is refused before it is decoded: a
+# JPEG of a few hundred bytes can say it is this large. The app sends
+# about 2 megapixels.
+MAX_PIXELS = 12_000_000
 
 # How to turn a picture upright for each EXIF orientation. The others, 1
 # and anything unknown, leave it as it is.

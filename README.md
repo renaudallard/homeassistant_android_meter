@@ -257,7 +257,7 @@ cost of the year and of the month.
 |---|---|
 | Waiting for the phone | No picture since Home Assistant started, or the integration was reloaded. |
 | Phone offline | No picture for three intervals, and at least five minutes. |
-| Unreadable picture | The phone sent something that is not a JPEG, a damaged or progressive one, or one over 40 megapixels. |
+| Unreadable picture | The phone sent something that is not a JPEG, a damaged or progressive one, or one over 12 megapixels. |
 | Crop not set | Set the crop on the phone, or with the controls on the device page. |
 | Crop outside the picture | The crop does not fit the picture. |
 | Reading to teach | Teach the reading (Configure > Teach the reading, or the Repairs notice). |
