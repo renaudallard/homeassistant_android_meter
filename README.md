@@ -292,6 +292,10 @@ cost of the year and of the month.
   backups, of Recents and of screenshots of the app. The pairing dialog
   shows only the host, as the connection spells it, so that a name made of
   look-alike letters shows for what it is.
+- Over plain http, anyone who can watch your network's traffic can read
+  the address. On Android 12 and older, Android also logs a pairing link
+  opened as a link, address included: share or paste the scanned text
+  instead.
 - The recognition was developed on synthetic pictures of a drum counter,
   rolling drums, carries, uneven light and noise included, and checked on a
   real Actaris G4. Marks printed under the digits and a glow across a
