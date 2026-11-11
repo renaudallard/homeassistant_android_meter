@@ -600,6 +600,23 @@ async def test_a_frame_read_during_an_unload_leaves_no_timer(
     assert meter._silence is None
 
 
+async def test_an_unloaded_meter_asks_for_no_reading(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """A disabled meter cannot be taught, so its Repairs notice goes, and
+    comes back with the meter."""
+    entry = await _entry(hass)
+    await _post(await hass_client_no_auth(), entry, synth.frame(1234567, LAYOUT, random.Random(7)))
+    await _options(hass, entry, **CROP)
+    issues = ir.async_get(hass)
+    issue_id = f"teach_{entry.entry_id}"
+    assert issues.async_get_issue(DOMAIN, issue_id) is not None
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    assert issues.async_get_issue(DOMAIN, issue_id) is not None
+
+
 async def test_a_reading_is_asked_in_repairs(
     hass: HomeAssistant, hass_client: Any, hass_client_no_auth: Any
 ) -> None:

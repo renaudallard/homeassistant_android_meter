@@ -312,12 +312,15 @@ class Meter:
 
     async def async_unload(self) -> None:
         """Store the state once the frame or change under way is done, and
-        take no more, which would arm the timer and the store again."""
+        take no more, which would arm the timer and the store again. The
+        Repairs notice goes until the meter is loaded again: a disabled
+        one cannot be taught."""
         async with self._lock:
             self._closed = True
             if self._silence is not None:
                 self._silence()
                 self._silence = None
+            ir.async_delete_issue(self.hass, DOMAIN, teach_issue_id(self.entry_id))
             await self._store.async_save(self._data())
 
     def _data(self) -> dict[str, Any]:
