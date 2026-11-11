@@ -187,7 +187,8 @@ class MainActivity : Activity() {
         refresh()
         if (resuming) {
             resuming = false
-            if (!Status.running && settings.wanted) withPermissions(::start)
+            /* Both would open the camera, as refresh() says. */
+            if (!Status.running && !shooting && settings.wanted) withPermissions(::start)
         }
     }
 
