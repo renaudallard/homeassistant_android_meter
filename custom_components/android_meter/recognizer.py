@@ -604,8 +604,10 @@ def render(data: bytes, geometry: Geometry | None, last: Read | None) -> bytes:
     """The frame upright, with each window outlined, for checking the crop.
 
     A window is green when the read trusted it, orange when it did not,
-    and yellow before any frame was read. The nearest known digit is
-    written under it, or ~ when the drum was between two digits.
+    and yellow when the last frame was not read: until a reading is taught
+    and the next frame comes, or after one the crop does not fit or that
+    could not be opened. The nearest known digit is written under it, or
+    ~ when the drum was between two digits.
     """
     frame = open_frame(data, 0 if geometry is None else geometry.rotation, "RGB")
     if geometry is not None:
