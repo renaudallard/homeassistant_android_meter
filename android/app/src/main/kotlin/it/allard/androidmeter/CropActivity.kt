@@ -49,6 +49,8 @@ import kotlin.math.roundToInt
 class CropActivity : Activity() {
     private lateinit var settings: Settings
     private lateinit var view: CropView
+    /* The picture shown, kept while newer ones come in, maybe turned. */
+    private lateinit var picture: Picture
     private lateinit var status: TextView
     private lateinit var save: Button
     private lateinit var find: Button
@@ -61,8 +63,7 @@ class CropActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = Settings(this)
-        val picture = Status.picture?.let { decodeUpright(it) }
-        if (picture == null) {
+        picture = Status.picture?.let { decodeUpright(it) } ?: run {
             Status.say(getString(R.string.no_picture))
             finish()
             return
@@ -163,10 +164,13 @@ class CropActivity : Activity() {
         return true
     }
 
-    /* Home Assistant finds the counter on the same picture and sets the crop. */
+    /*
+     * Home Assistant finds the counter on the last picture it has, and sets
+     * the crop. That may be newer than the one shown: the box only moves
+     * when the crop fits the picture shown.
+     */
     private fun findIt() {
         val url = settings.url
-        val picture = Status.picture?.let { decodeUpright(it) } ?: return
         find.isEnabled = false
         Thread {
             val (text, crop) = try {
