@@ -226,6 +226,22 @@ def _find_counter(data: bytes) -> dict[str, int] | None:
     return None if crop is None else _checked(crop)
 
 
+async def _read(request: web.Request, limit: int) -> bytes | None:
+    """The body of a request, or None when it is over limit. aiohttp
+    unpacks a body sent compressed, which its length does not bound. One
+    that cannot be unpacked, or cut short as the phone lost the network,
+    reads as no body."""
+    if (request.content_length or 0) > limit:
+        return None
+    try:
+        data = await request.read()
+    except web.HTTPRequestEntityTooLarge:
+        return None
+    except web.RequestPayloadError, ConnectionResetError:
+        return b""
+    return data if len(data) <= limit else None
+
+
 def _find_message(body: bytes) -> bool:
     """Whether a message from the phone is {"find": true}."""
     try:
@@ -635,20 +651,20 @@ class Meter:
     async def async_webhook(
         self, hass: HomeAssistant, webhook_id: str, request: web.Request
     ) -> web.Response:
-        """A frame from the phone, or a crop drawn on it.
+        """A frame from the phone, or a message from it.
 
         The answer tells the phone when to send the next frame, and the
-        crop in force for its editor.
+        crop in force for its editor. A body must say its length, as the
+        phone's do: aiohttp would read one that does not up to 16 MB.
         """
+        if request.content_length is None:
+            return web.Response(status=HTTPStatus.LENGTH_REQUIRED)
         if request.content_type == "application/json":
-            return await self._async_crop_from_phone(request)
+            return await self._async_message(request)
         if request.content_type != "image/jpeg":
             return web.Response(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
-        length = request.content_length
-        if length is not None and length > MAX_FRAME_BYTES:
-            return web.Response(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
-        data = await request.read()
-        if len(data) > MAX_FRAME_BYTES:
+        data = await _read(request, MAX_FRAME_BYTES)
+        if data is None:
             return web.Response(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
         if not data:
             return web.Response(status=HTTPStatus.BAD_REQUEST)
@@ -662,14 +678,11 @@ class Meter:
             }
         )
 
-    async def _async_crop_from_phone(self, request: web.Request) -> web.Response:
+    async def _async_message(self, request: web.Request) -> web.Response:
         """Apply {"crop": {...}} drawn on the phone, on the picture as sent,
         or {"find": true}, the counter found on it."""
-        length = request.content_length
-        if length is not None and length > MAX_MESSAGE_BYTES:
-            return web.Response(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
-        body = await request.read()
-        if len(body) > MAX_MESSAGE_BYTES:
+        body = await _read(request, MAX_MESSAGE_BYTES)
+        if body is None:
             return web.Response(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
         if _find_message(body):
             error = await self.async_find_crop()

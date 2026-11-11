@@ -29,20 +29,68 @@ never writes to the log: the address holds the meter's secret."""
 from __future__ import annotations
 
 import asyncio
+import gzip
+import logging
 import random
 import threading
 import time
+from collections.abc import AsyncIterator
+from http import HTTPStatus
 from typing import Any
 from unittest.mock import patch
 
+import pytest
 from homeassistant.core import HomeAssistant
 
 from tests import synth
 from tests.test_integration import LAYOUT, _entry, _post
 
 
+def _logged(caplog: pytest.LogCaptureFixture, entry: Any) -> bool:
+    """Whether a warning or an error names the webhook id."""
+    secret = entry.data["webhook_id"]
+    return any(
+        secret in record.getMessage() or secret in (record.exc_text or "")
+        for record in caplog.records
+        if record.levelno >= logging.WARNING
+    )
+
+
 def _url(entry: Any) -> str:
     return f"/api/webhook/{entry.data['webhook_id']}"
+
+
+async def test_a_body_without_a_length_is_refused(
+    hass: HomeAssistant, hass_client_no_auth: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The phone always sends one. Without, aiohttp reads up to 16 MB and
+    fails past that, an error Home Assistant logs with the webhook id."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+
+    async def chunks() -> AsyncIterator[bytes]:
+        yield b'{"find": true}'
+
+    for kind in ("image/jpeg", "application/json"):
+        response = await client.post(_url(entry), data=chunks(), headers={"Content-Type": kind})
+        assert response.status == HTTPStatus.LENGTH_REQUIRED
+    assert not _logged(caplog, entry)
+
+
+async def test_a_body_too_large_once_unpacked_is_refused(
+    hass: HomeAssistant, hass_client_no_auth: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    """aiohttp unpacks a gzip body: its length says nothing of the size."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    for data in (gzip.compress(bytes(17 * 1024 * 1024)), b"\x1f\x8b not gzip"):
+        response = await client.post(
+            _url(entry),
+            data=data,
+            headers={"Content-Type": "image/jpeg", "Content-Encoding": "gzip"},
+        )
+        assert response.status in (HTTPStatus.BAD_REQUEST, HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+    assert not _logged(caplog, entry)
 
 
 async def test_finds_run_one_at_a_time(hass: HomeAssistant, hass_client_no_auth: Any) -> None:
