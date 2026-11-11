@@ -167,7 +167,7 @@ class CropActivity : Activity() {
     /*
      * Home Assistant finds the counter on the last picture it has, and sets
      * the crop. That may be newer than the one shown: the box only moves
-     * when the crop fits the picture shown.
+     * when the crop fits the picture shown, and says so when it does not.
      */
     private fun findIt() {
         val url = settings.url
@@ -182,11 +182,12 @@ class CropActivity : Activity() {
                 getString(R.string.crop_failed, e.message ?: e.javaClass.simpleName) to null
             }
             runOnUiThread {
-                if (crop != null && apply(crop, picture.width.toFloat(), picture.height.toFloat())) {
+                val shown = crop != null && apply(crop, picture.width.toFloat(), picture.height.toFloat())
+                if (shown) {
                     shownValues.forEach { it() }
                     view.invalidate()
                 }
-                status.text = text
+                status.text = if (crop != null && !shown) getString(R.string.crop_found_unseen) else text
                 find.isEnabled = true
             }
         }.start()

@@ -150,7 +150,9 @@ Android SDK platform 37).
    not, or if no counter was found, drag the yellow box over the drum
    windows yourself, moving it from its middle and sizing it from its
    corners, set the drums, decimal drums and gap with the − and + buttons,
-   and press **Save the crop**.
+   and press **Save the crop**. A crop found on a picture other than the
+   one the editor shows, from another camera say, is set all the same but
+   not drawn: check it on the Frame image.
 
    A drum hidden by a glare between two others is counted all the same,
    but one hidden at either end, behind a seal wire or out of the picture,

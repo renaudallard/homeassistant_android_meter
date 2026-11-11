@@ -22,6 +22,7 @@
     <string name="crop_save">Save the crop</string>
     <string name="crop_find">Find the counter</string>
     <string name="crop_found">Home Assistant found the counter and set the crop. Check each green frame sits on a window.</string>
+    <string name="crop_found_unseen">Home Assistant found the counter and set the crop, but on a picture other than the one shown here, so the box cannot show it. Check it on the Frame image in Home Assistant.</string>
     <string name="crop_not_found">Home Assistant found no counter on the last picture. Draw the box by hand.</string>
     <string name="crop_saved">Saved. Home Assistant reads the next pictures with this crop.</string>
     <string name="crop_locked">The crop is locked in Home Assistant, so that the digits learnt are kept. Turn off Lock the crop on the meter\'s device page, then try again.</string>
