@@ -93,6 +93,18 @@ async def test_a_body_too_large_once_unpacked_is_refused(
     assert not _logged(caplog, entry)
 
 
+async def test_an_error_is_logged_without_the_webhook_id(
+    hass: HomeAssistant, hass_client_no_auth: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    with patch.object(entry.runtime_data, "async_frame", side_effect=RuntimeError("boom")):
+        response = await _post(client, entry, b"\xff\xd8")
+    assert response.status == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert "boom" in caplog.text
+    assert not _logged(caplog, entry)
+
+
 async def test_finds_run_one_at_a_time(hass: HomeAssistant, hass_client_no_auth: Any) -> None:
     """Each decodes the last picture whole: side by side they would take
     the memory of as many pictures."""

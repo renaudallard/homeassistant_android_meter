@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import math
 import re
 from collections.abc import Mapping
@@ -84,6 +85,8 @@ from .const import (
     STATUS_WAITING,
     STORAGE_VERSION,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 SAVE_DELAY = 60
 
@@ -656,12 +659,21 @@ class Meter:
         """A frame from the phone, or a message from it.
 
         The answer tells the phone when to send the next frame, and the
-        crop in force for its editor. A body must say its length, as the
+        crop in force for its editor. An error is logged here: Home
+        Assistant would log it with the webhook id, the meter's secret.
+        """
+        try:
+            return await self._async_answer(request)
+        except Exception:
+            _LOGGER.exception("Error handling what the phone sent to meter %s", self.entry_id)
+            return web.Response(status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    async def _async_answer(self, request: web.Request) -> web.Response:
+        """What async_webhook answers. A body must say its length, as the
         phone's do: aiohttp would read one that does not up to 16 MB. The
         phone sends one frame at a time, and frames piling up behind a
         slow one would each hold up to 8 MB: one coming while another is
-        received or read is refused.
-        """
+        received or read is refused."""
         if request.content_length is None:
             return web.Response(status=HTTPStatus.LENGTH_REQUIRED)
         if request.content_type == "application/json":
