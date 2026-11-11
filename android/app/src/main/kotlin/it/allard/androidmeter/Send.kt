@@ -37,25 +37,35 @@ import java.util.concurrent.CancellationException
  * Takes a picture and posts it, on the handler's thread, then calls then
  * with the seconds to wait before the next one, unless the shot returned
  * is cancelled. once only changes the wording, for a picture taken by
- * hand.
+ * hand. Once live turns false, as the watch stops, nothing more is said
+ * of the picture, which would cover what came since.
  */
-fun shootAndSend(context: Context, handler: Handler, once: Boolean, then: (Int) -> Unit): Shot? {
+fun shootAndSend(
+    context: Context,
+    handler: Handler,
+    once: Boolean,
+    live: () -> Boolean,
+    then: (Int) -> Unit,
+): Shot? {
+    fun say(text: String) {
+        if (live()) Status.say(text)
+    }
     val settings = Settings(context)
     val camera = settings.camera ?: lenses(context).firstOrNull()?.id
     if (camera == null) {
-        Status.say(context.getString(R.string.no_camera))
+        say(context.getString(R.string.no_camera))
         then(settings.interval)
         return null
     }
-    Status.say(context.getString(R.string.shooting))
+    say(context.getString(R.string.shooting))
     val shot = Shot(context, camera, settings.torch, handler) { result ->
         val now = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date())
         val jpeg = result.getOrElse {
             if (it is CancellationException) {
-                Status.say(context.getString(R.string.cancelled))
+                say(context.getString(R.string.cancelled))
                 return@Shot
             }
-            Status.say(context.getString(R.string.camera_failed, it.message ?: it.javaClass.simpleName))
+            say(context.getString(R.string.camera_failed, it.message ?: it.javaClass.simpleName))
             then(settings.interval)
             return@Shot
         }
@@ -65,14 +75,14 @@ fun shootAndSend(context: Context, handler: Handler, once: Boolean, then: (Int) 
             settings.interval = reply.interval
             settings.torch = reply.torch
             reply.crop?.let { settings.crop = it }
-            Status.say(
+            say(
                 if (once) context.getString(R.string.sent_once, now, reply.status)
                 else context.getString(R.string.sent, now, reply.status, reply.interval)
             )
             reply.interval
         } catch (e: Exception) {
             val why = e.message ?: e.javaClass.simpleName
-            Status.say(
+            say(
                 if (once) context.getString(R.string.send_failed_once, now, why)
                 else context.getString(R.string.send_failed, now, why, settings.interval)
             )

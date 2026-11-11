@@ -332,7 +332,7 @@ class MainActivity : Activity() {
         }
         val handler = Handler(t.looper)
         handler.post {
-            single = shootAndSend(this, handler, true) {
+            single = shootAndSend(this, handler, true, { true }) {
                 runOnUiThread {
                     shooting = false
                     refresh()

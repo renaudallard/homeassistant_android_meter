@@ -68,7 +68,7 @@ class CaptureService : Service() {
             if (!running) return
             /* Held until the next picture, and a margin, should this one never end. */
             wakeLock?.acquire((Settings(this@CaptureService).interval + WAKE_MARGIN) * 1000L)
-            shot = shootAndSend(this@CaptureService, handler, false) { seconds ->
+            shot = shootAndSend(this@CaptureService, handler, false, { running }) { seconds ->
                 shot = null
                 if (running) {
                     wakeLock?.acquire((seconds + WAKE_MARGIN) * 1000L)
@@ -153,6 +153,8 @@ class CaptureService : Service() {
             lock?.release()
             thread.quitSafely()
         }
+        /* The picture under way says nothing more, see live. */
+        Status.say(getString(R.string.idle))
         Status.running(false)
         super.onDestroy()
     }
