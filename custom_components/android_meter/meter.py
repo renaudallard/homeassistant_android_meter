@@ -305,6 +305,8 @@ class Meter:
         self._heard = dt_util.utcnow()
         # Unloaded: frames and changes still on their way are dropped.
         self._closed = False
+        # A frame is being received or read: the phone sends one at a time.
+        self._receiving = False
         # Each Find decodes the whole picture: one at a time.
         self._finding = asyncio.Lock()
 
@@ -655,7 +657,10 @@ class Meter:
 
         The answer tells the phone when to send the next frame, and the
         crop in force for its editor. A body must say its length, as the
-        phone's do: aiohttp would read one that does not up to 16 MB.
+        phone's do: aiohttp would read one that does not up to 16 MB. The
+        phone sends one frame at a time, and frames piling up behind a
+        slow one would each hold up to 8 MB: one coming while another is
+        received or read is refused.
         """
         if request.content_length is None:
             return web.Response(status=HTTPStatus.LENGTH_REQUIRED)
@@ -663,12 +668,18 @@ class Meter:
             return await self._async_message(request)
         if request.content_type != "image/jpeg":
             return web.Response(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
-        data = await _read(request, MAX_FRAME_BYTES)
-        if data is None:
-            return web.Response(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
-        if not data:
-            return web.Response(status=HTTPStatus.BAD_REQUEST)
-        await self.async_frame(data)
+        if self._receiving:
+            return web.Response(status=HTTPStatus.SERVICE_UNAVAILABLE)
+        self._receiving = True
+        try:
+            data = await _read(request, MAX_FRAME_BYTES)
+            if data is None:
+                return web.Response(status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+            if not data:
+                return web.Response(status=HTTPStatus.BAD_REQUEST)
+            await self.async_frame(data)
+        finally:
+            self._receiving = False
         return web.json_response(
             {
                 "interval": self.settings.interval,

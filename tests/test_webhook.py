@@ -119,3 +119,36 @@ async def test_finds_run_one_at_a_time(hass: HomeAssistant, hass_client_no_auth:
     assert most == 1
     for reply in replies:
         assert (await reply.json())["error"] == "counter_not_found"
+
+
+async def test_a_frame_while_another_waits_is_refused(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """The phone sends one at a time. Frames piling up behind a slow one
+    would each hold up to 8 MB."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    data = synth.frame(1234567, LAYOUT, random.Random(4))
+    meter = entry.runtime_data
+    release = threading.Event()
+    read = meter._read
+
+    def slow(*args: Any) -> Any:
+        release.wait(10)
+        return read(*args)
+
+    with patch.object(meter, "_read", slow):
+        first = hass.async_create_task(_post(client, entry, data))
+        while not meter._lock.locked():
+            await asyncio.sleep(0)
+        second = hass.async_create_task(_post(client, entry, data))
+        for _ in range(50):
+            if second.done():
+                break
+            await asyncio.sleep(0.01)
+        done = second.done()
+        release.set()
+        assert done
+        assert (await second).status == HTTPStatus.SERVICE_UNAVAILABLE
+        assert (await first).status == HTTPStatus.OK
+    assert (await _post(client, entry, data)).status == HTTPStatus.OK
