@@ -179,7 +179,9 @@ in, then goes on learning on its own as the meter turns.
 
 1. Open Configure > **Teach the reading**, or press **Fix** on the Repairs
    notice. The screen shows the last picture with each drum outlined. The
-   **Teach the reading** box on the device page does the same.
+   **Teach the reading** box on the device page does the same. The picture
+   is the Frame image's: with that image disabled nothing is taught, as no
+   picture shows what to type.
 2. Type the meter's reading, every drum from left to right, for example
    `01234.567`, drums left of the crop included. Decimal drums right of
    the crop may be typed too; they are left out. A drum caught between two
