@@ -289,7 +289,9 @@ cost of the year and of the month.
   **Adjust sum** in Settings > Tools > Statistics.
 - The webhook address holds the webhook's secret: the app never sends it
   anywhere else, does not follow redirects, and keeps it out of Android
-  backups.
+  backups. The pairing dialog shows only the host, as the connection
+  spells it, so that a name made of look-alike letters shows for what it
+  is.
 - The recognition was developed on synthetic pictures of a drum counter,
   rolling drums, carries, uneven light and noise included, and checked on a
   real Actaris G4. Marks printed under the digits and a glow across a

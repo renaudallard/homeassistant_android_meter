@@ -54,6 +54,8 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
+import java.net.IDN
+import java.util.Locale
 
 private const val PERMISSIONS = 1
 private const val ASKED = "asked"
@@ -189,12 +191,18 @@ class MainActivity : Activity() {
 
     private fun offer(text: String) {
         val address = pairingAddress(text)
-        val host = address?.let { Uri.parse(it).host }
-        if (address == null || host.isNullOrEmpty()) {
+        val uri = address?.let { Uri.parse(it) }
+        /* As the connection names it: letters that only look like others show as what they are. */
+        val host = try {
+            uri?.host?.let { IDN.toASCII(it).lowercase(Locale.ROOT) }
+        } catch (e: IllegalArgumentException) {
+            null
+        }
+        if (address == null || uri == null || host.isNullOrEmpty()) {
             Status.say(getString(R.string.link_bad))
             return
         }
-        val port = Uri.parse(address).port
+        val port = uri.port
         AlertDialog.Builder(this)
             .setTitle(R.string.link_title)
             .setMessage(getString(R.string.link_text, if (port > 0) "$host:$port" else host))
