@@ -43,6 +43,7 @@ import android.os.HandlerThread
 import android.os.PowerManager
 import android.text.InputType
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -98,6 +99,8 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        /* The address holds the webhook's secret: kept out of Recents and screenshots. */
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         settings = Settings(this)
         val pad = (16 * resources.displayMetrics.density).toInt()
         val column = LinearLayout(this).apply {
@@ -194,7 +197,6 @@ class MainActivity : Activity() {
         offer(clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString() ?: "", true)
     }
 
-
     private fun offer(text: String, pasted: Boolean) {
         val address = pairingAddress(text)
         val uri = address?.let { Uri.parse(it) }
@@ -227,7 +229,6 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dialog.window?.setHideOverlayWindows(true)
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).filterTouchesWhenObscured = true
     }
-
 
     override fun onResume() {
         super.onResume()
