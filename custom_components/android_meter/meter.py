@@ -515,6 +515,7 @@ class Meter:
         fresh = forget or settings.shape() != self.settings.shape()
         rescaled = settings.decimals != self.settings.decimals
         patches = recognizer.Patches() if fresh else self.patches
+        taught: Decimal | None = None
         if reading is not None:
             if settings.geometry is None:
                 raise TeachError("no_crop")
@@ -528,14 +529,16 @@ class Meter:
                 raise TeachError("crop_outside")
             if learnt == 0:
                 raise TeachError("nothing_at_rest")
+            # Typed against the decimals there were before the lock.
+            taught = _volume(value, settings.decimals)
         self.options = {**DEFAULTS, **options}
         self.settings = settings
         self.patches = patches
         # Only a frame ends the wait for the phone.
         silent = self.status in (STATUS_OFFLINE, STATUS_WAITING)
-        if reading is not None and picture is not None:
-            self.reading = reading
-            self.ceiling = reading
+        if taught is not None and picture is not None:
+            self.reading = taught
+            self.ceiling = taught
             self.read_at = picture[1]
             if not silent:
                 self.status = STATUS_OK

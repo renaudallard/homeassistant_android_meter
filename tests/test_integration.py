@@ -301,6 +301,10 @@ async def test_decimals_right_of_the_crop_are_dropped(
     result = await _options(hass, entry, **head, reading="01234.567")
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.56"
+    # Typed while the decimals were others, as one waiting for the lock is.
+    meter = entry.runtime_data
+    await meter.async_configure(reading=Decimal("1234.567"), picture=meter.picture())
+    assert meter.reading == Decimal("1234.56")
 
 
 async def test_the_webhook_refuses_what_is_not_a_frame(
