@@ -205,6 +205,9 @@
     "no_frame": {
       "message": "No picture has arrived yet. Take one with the phone first."
     },
+    "frame_hidden": {
+      "message": "The Frame image is disabled, so no picture shows what to type. Enable it on the device page first."
+    },
     "nothing_at_rest": {
       "message": "No drum shows a whole digit on the last frame. Wait for the meter to stop and try again."
     },

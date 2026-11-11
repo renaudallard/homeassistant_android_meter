@@ -37,7 +37,7 @@ from . import MeterConfigEntry
 from .const import DOMAIN
 from .entity import MeterEntity
 from .meter import TeachError, parse_reading
-from .teach import counter_placeholders
+from .teach import counter_placeholders, frame_picture
 
 
 async def async_setup_entry(
@@ -72,6 +72,10 @@ class TeachText(MeterEntity, TextEntity):
                 translation_key="bad_reading",
                 translation_placeholders=counter_placeholders(meter),
             )
+        # The device page shows no picture: the reading would be typed blind.
+        shown = frame_picture(self.hass, self._entry.entry_id, meter)
+        if meter.picture() is not None and not shown:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="frame_hidden")
         try:
             await meter.async_configure(reading=reading, picture=meter.picture())
         except TeachError as err:

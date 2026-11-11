@@ -480,6 +480,14 @@ async def test_no_picture_shown_none_taught(hass: HomeAssistant, hass_client_no_
     result = await _options(hass, entry, reading="01234.567")
     assert result["errors"] == {"base": "no_frame"}
     assert result["description_placeholders"]["frame_image"] == ""
+    with pytest.raises(ServiceValidationError) as err:
+        await hass.services.async_call(
+            "text",
+            "set_value",
+            {"entity_id": "text.gas_meter_teach_the_reading", "value": "01234.567"},
+            blocking=True,
+        )
+    assert err.value.translation_key == "frame_hidden"
 
 
 async def test_the_picture_shown_is_taught(
