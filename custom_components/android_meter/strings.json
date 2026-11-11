@@ -60,10 +60,10 @@
     },
     "error": {
       "bad_reading": "This is not a reading. Type the drums as digits, with a point or a comma before the decimals: the crop has {digits} drums, {decimals} of them decimal, so a reading ends like {example}.",
-      "crop_outside": "The crop goes past the edge of the last frame.",
+      "crop_outside": "The crop goes past the edge of the picture shown.",
       "no_crop": "Set the crop before teaching a reading.",
       "no_frame": "No frame has arrived yet to teach the reading from.",
-      "nothing_at_rest": "No drum shows a whole digit on the last frame. Wait for the meter to stop and try again.",
+      "nothing_at_rest": "No drum shows a whole digit on the picture shown. Wait for the meter to stop and try again.",
       "no_reading": "Type the reading the picture shows, or tick Forget the digits learnt."
     }
   },
@@ -174,8 +174,8 @@
           "no_reading": "Type the reading the picture shows, or tick Forget the digits learnt.",
           "no_crop": "Set the crop before teaching a reading.",
           "no_frame": "No frame has arrived yet to teach the reading from.",
-          "crop_outside": "The crop goes past the edge of the last frame.",
-          "nothing_at_rest": "No drum shows a whole digit on the last frame. Wait for the meter to stop and try again."
+          "crop_outside": "The crop goes past the edge of the picture shown.",
+          "nothing_at_rest": "No drum shows a whole digit on the picture shown. Wait for the meter to stop and try again."
         },
         "abort": {
           "not_loaded": "The meter is not running. Check the integration and try again."
