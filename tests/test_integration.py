@@ -712,6 +712,19 @@ async def test_the_repairs_notice_outlives_a_reload(
     assert issues.async_get_issue(DOMAIN, issue_id) is None
 
 
+async def test_the_options_of_an_unloaded_meter(hass: HomeAssistant) -> None:
+    """The meter's own settings need it loaded: the options say so."""
+    entry = await _entry(hass)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    for step in ("teach", "phone"):
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"next_step_id": step}
+        )
+        assert result["type"] is FlowResultType.ABORT
+        assert result["reason"] == "not_loaded"
+
+
 async def test_a_reading_is_asked_in_repairs(
     hass: HomeAssistant, hass_client: Any, hass_client_no_auth: Any
 ) -> None:

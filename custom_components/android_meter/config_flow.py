@@ -66,7 +66,7 @@ from .const import (
     MAX_INTERVAL,
     MIN_INTERVAL,
 )
-from .teach import async_teach, teach_schema, teach_screen
+from .teach import async_teach, loaded_meter, teach_schema, teach_screen
 
 
 def _webhook_url(hass: HomeAssistant, webhook_id: str) -> str:
@@ -160,7 +160,9 @@ class AndroidMeterOptionsFlow(OptionsFlow):
     async def async_step_teach(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """The last picture, and the reading it shows."""
         entry: MeterConfigEntry = self.config_entry
-        meter = entry.runtime_data
+        meter = loaded_meter(entry)
+        if meter is None:
+            return self.async_abort(reason="not_loaded")
         errors: dict[str, str] = {}
         if user_input is not None:
             errors = await async_teach(meter, user_input, self._picture)
@@ -177,6 +179,9 @@ class AndroidMeterOptionsFlow(OptionsFlow):
     async def async_step_phone(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """How often the phone takes a picture, the torch, and pairing."""
         entry: MeterConfigEntry = self.config_entry
+        meter = loaded_meter(entry)
+        if meter is None:
+            return self.async_abort(reason="not_loaded")
         current = self._current()
         if user_input is not None:
             changes = {
@@ -184,7 +189,7 @@ class AndroidMeterOptionsFlow(OptionsFlow):
                 CONF_TORCH: bool(user_input[CONF_TORCH]),
                 CONF_MAX_FLOW: float(user_input[CONF_MAX_FLOW]),
             }
-            await entry.runtime_data.async_configure(changes)
+            await meter.async_configure(changes)
             return self.async_create_entry(data=self._current())
         url = _webhook_url(self.hass, entry.data[CONF_WEBHOOK_ID])
         schema = probatio.Schema(

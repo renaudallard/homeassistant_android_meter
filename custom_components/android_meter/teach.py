@@ -38,12 +38,20 @@ from datetime import datetime
 from typing import Any
 
 import probatio
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import BooleanSelector, TextSelector
 
+from . import MeterConfigEntry
 from .const import CONF_FORGET, CONF_READING, DOMAIN
 from .meter import Meter, TeachError, parse_reading
+
+
+def loaded_meter(entry: MeterConfigEntry) -> Meter | None:
+    """The entry's meter, or none when it is not running: it failed to
+    start, or it is unloaded or disabled."""
+    return entry.runtime_data if entry.state is ConfigEntryState.LOADED else None
 
 
 def teach_schema() -> probatio.Schema:

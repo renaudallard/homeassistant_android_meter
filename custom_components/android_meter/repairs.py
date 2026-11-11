@@ -35,11 +35,10 @@ from datetime import datetime
 from typing import Any
 
 from homeassistant.components.repairs import RepairsFlow, RepairsFlowResult
-from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
 from . import MeterConfigEntry
-from .teach import async_teach, teach_schema, teach_screen
+from .teach import async_teach, loaded_meter, teach_schema, teach_screen
 
 
 class TeachFlow(RepairsFlow):
@@ -57,9 +56,9 @@ class TeachFlow(RepairsFlow):
         """The last picture, and the reading it shows. Forgetting the
         digits alone leaves a reading still to type, and the notice."""
         entry = self._entry
-        if entry.state is not ConfigEntryState.LOADED:
+        meter = loaded_meter(entry)
+        if meter is None:
             return self.async_abort(reason="not_loaded")
-        meter = entry.runtime_data
         errors: dict[str, str] = {}
         if user_input is not None:
             errors = await async_teach(meter, user_input, self._picture)
