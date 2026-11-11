@@ -50,6 +50,12 @@ class TeachFlow(RepairsFlow):
         self._picture: tuple[bytes, datetime] | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> RepairsFlowResult:
+        # Home Assistant hands the issue id in here as if it were typed.
+        return await self.async_step_teach()
+
+    async def async_step_teach(self, user_input: dict[str, Any] | None = None) -> RepairsFlowResult:
+        """The last picture, and the reading it shows. Forgetting the
+        digits alone leaves a reading still to type, and the notice."""
         entry = self._entry
         if entry.state is not ConfigEntryState.LOADED:
             return self.async_abort(reason="not_loaded")
@@ -57,11 +63,11 @@ class TeachFlow(RepairsFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             errors = await async_teach(meter, user_input, self._picture)
-            if not errors:
+            if not errors and not meter.untaught():
                 return self.async_create_entry(data={})
         self._picture = meter.picture()
         return self.async_show_form(
-            step_id="init",
+            step_id="teach",
             data_schema=teach_schema(),
             errors=errors,
             description_placeholders=teach_placeholders(self.hass, entry.entry_id, meter),

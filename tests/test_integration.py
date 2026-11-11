@@ -614,10 +614,15 @@ async def test_a_reading_is_asked_in_repairs(
 
     client = await hass_client()
     flow = await start_repair_fix_flow(client, DOMAIN, issue_id)
-    assert flow["step_id"] == "init"
+    assert flow["step_id"] == "teach"
+    assert not flow["errors"]
     assert flow["description_placeholders"]["frame_image"].startswith("![](/api/image_proxy/")
     flow = await process_repair_fix_flow(client, flow["flow_id"], {"reading": "nonsense"})
     assert flow["errors"] == {"reading": "bad_reading"}
+    # Forgetting alone leaves the reading to type.
+    flow = await process_repair_fix_flow(client, flow["flow_id"], {"forget": True})
+    assert flow["type"] == "form"
+    assert issues.async_get_issue(DOMAIN, issue_id) is not None
     flow = await process_repair_fix_flow(client, flow["flow_id"], {"reading": "01234.567"})
     assert flow["type"] == "create_entry"
     await hass.async_block_till_done()

@@ -156,7 +156,7 @@
       "title": "{name} needs a reading",
       "fix_flow": {
         "step": {
-          "init": {
+          "teach": {
             "title": "Teach the reading",
             "description": "{frame_image}\n\nType the meter's reading, every drum from left to right, for example `{example}`. Drums left of the crop count too: type them as the meter shows them, and the reading follows them from then on. Decimal drums right of the crop may be typed as well; they are left out. Read the drums, not the outlines: a drum between two digits counts as the lower one. Each drum of the crop showing a whole digit is learnt.\n\nDigits learnt: {known}. Still to learn: {unknown}. Teach again later, when the meter shows other digits, to learn them sooner; the meter also learns them on its own as it turns.",
             "data": {
