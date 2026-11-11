@@ -124,7 +124,7 @@ private fun sendMessage(url: String, message: JSONObject): CropReply {
         connection.outputStream.use { it.write(body) }
         val code = connection.responseCode
         if (code != HttpURLConnection.HTTP_OK) throw IOException("HTTP $code")
-        val json = JSONObject(connection.inputStream.use { read(it) })
+        val json = json(connection.inputStream.use { read(it) })
         val error = if (json.isNull("error")) null else json.optString("error").take(32)
         return CropReply(error, json.optJSONObject("crop")?.toString())
     } catch (e: JSONException) {
@@ -134,9 +134,20 @@ private fun sendMessage(url: String, message: JSONObject): CropReply {
     }
 }
 
+/*
+ * An answer as JSON. org.json reads nested values recursively: one nested
+ * deep enough, from a hostile server, overflows the stack, an Error that
+ * no catch of Exception takes, and the app would die with each picture.
+ */
+private fun json(body: String): JSONObject = try {
+    JSONObject(body)
+} catch (e: StackOverflowError) {
+    throw JSONException("answer nested too deep")
+}
+
 fun parse(body: String): Reply {
     try {
-        val json = JSONObject(body)
+        val json = json(body)
         val interval = json.getInt("interval").coerceIn(MIN_INTERVAL, MAX_INTERVAL)
         val status = json.optString("status", "?").take(32)
         val crop = json.optJSONObject("crop")?.toString()
