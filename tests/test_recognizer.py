@@ -98,6 +98,14 @@ def test_open_frame_refuses_a_huge_frame(monkeypatch: pytest.MonkeyPatch) -> Non
         r.open_frame(jpeg.getvalue(), 0)
 
 
+def test_open_frame_refuses_a_progressive_jpeg() -> None:
+    """Nothing bounds its scans, each decoded over the whole picture."""
+    jpeg = io.BytesIO()
+    Image.new("L", (64, 64)).save(jpeg, "JPEG", progressive=True)
+    with pytest.raises(r.FrameError):
+        r.open_frame(jpeg.getvalue(), 0)
+
+
 def test_rotation_turns_clockwise() -> None:
     jpeg = io.BytesIO()
     Image.new("RGB", (40, 20)).save(jpeg, "JPEG")

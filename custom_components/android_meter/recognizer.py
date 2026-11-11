@@ -194,6 +194,11 @@ def open_frame(data: bytes, rotation: int, mode: str = "L") -> Image.Image:
         with Image.open(io.BytesIO(data), formats=["JPEG"]) as image:
             if image.width * image.height > MAX_PIXELS:
                 raise FrameError("frame too large")
+            # Each scan of a progressive JPEG is decoded over the whole
+            # picture, and nothing bounds how many there are: a small one
+            # can take an hour. Phones send baseline JPEGs.
+            if image.info.get("progressive"):
+                raise FrameError("progressive JPEG")
             # Some phones tag the turn instead of turning the pixels. The
             # tag is only read: writing a damaged EXIF block back, as
             # ImageOps.exif_transpose does, can fail with any error.
