@@ -157,10 +157,13 @@ class MainActivity : Activity() {
      * link opened, as text shared from the camera, or pasted. Any page or
      * app can hand such text over, so the address is only taken once the
      * user agrees to the host it names; the rest of it is the webhook's
-     * secret and stays off the screen.
+     * secret and stays off the screen. Opened again from Recents, the screen
+     * is handed the intent it was first opened with: that is not offered
+     * again.
      */
     private fun fromIntent(intent: Intent?) {
-        when (intent?.action) {
+        if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        when (intent.action) {
             Intent.ACTION_VIEW -> intent.dataString?.let { offer(it) }
             Intent.ACTION_SEND -> sharedText(intent)?.let { offer(it) }
             ACTION_RESUME -> resuming = true
