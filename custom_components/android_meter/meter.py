@@ -289,6 +289,8 @@ class Meter:
         self._heard = dt_util.utcnow()
         # Unloaded: frames and changes still on their way are dropped.
         self._closed = False
+        # Each Find decodes the whole picture: one at a time.
+        self._finding = asyncio.Lock()
 
     async def async_load(self) -> None:
         data = await self._store.async_load()
@@ -604,15 +606,18 @@ class Meter:
     async def async_find_crop(self) -> str | None:
         """Find the counter on the last picture and apply its crop.
 
-        Returns the error, or None.
+        Returns the error, or None. Finds asked meanwhile wait: each
+        decodes the whole picture, and side by side they would take the
+        memory of as many.
         """
-        frame = self.frame
-        if frame is None:
-            return "no_frame"
-        crop = await self.hass.async_add_executor_job(_find_counter, frame)
-        if crop is None:
-            return "counter_not_found"
-        return await self.async_change(crop)
+        async with self._finding:
+            frame = self.frame
+            if frame is None:
+                return "no_frame"
+            crop = await self.hass.async_add_executor_job(_find_counter, frame)
+            if crop is None:
+                return "counter_not_found"
+            return await self.async_change(crop)
 
     def crop(self) -> dict[str, Any]:
         """The crop and counter in force, for the phone's crop editor."""
