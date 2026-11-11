@@ -572,11 +572,12 @@ class Meter:
         entry's options too. Returns the error, or None.
 
         The lock is held from the first look at the options on, so that a
-        reading being taught, or another change, is waited for.
+        reading being taught, or another change, is waited for. One that
+        comes as the meter is unloaded is refused.
         """
         async with self._lock:
             if self._closed:
-                return None
+                return "not_loaded"
             given = set(changes)
             changed = {
                 key: value for key, value in changes.items() if self.options.get(key) != value

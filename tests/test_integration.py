@@ -623,6 +623,20 @@ async def test_a_frame_read_during_an_unload_leaves_no_timer(
     assert meter._silence is None
 
 
+async def test_an_unloaded_meter_takes_no_change(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """A crop or a Find still on its way when the meter is unloaded says
+    so, rather than that it was applied."""
+    entry = await _entry(hass)
+    await _post(await hass_client_no_auth(), entry, synth.frame(1234567, LAYOUT, random.Random(10)))
+    meter = entry.runtime_data
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert await meter.async_change({"x": CROP["x"]}) == "not_loaded"
+    assert await meter.async_find_crop() == "not_loaded"
+    assert entry.options["x"] == entry.options["width"] == 0
+
+
 async def test_an_unloaded_meter_asks_for_no_reading(
     hass: HomeAssistant, hass_client_no_auth: Any
 ) -> None:

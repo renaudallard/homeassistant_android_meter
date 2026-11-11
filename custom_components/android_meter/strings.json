@@ -213,6 +213,9 @@
     },
     "counter_not_found": {
       "message": "No counter was found on the last picture. Check that the drums are in the picture, lit and in focus, or set the crop by hand."
+    },
+    "not_loaded": {
+      "message": "The meter is being unloaded. Try again once it runs."
     }
   }
 }

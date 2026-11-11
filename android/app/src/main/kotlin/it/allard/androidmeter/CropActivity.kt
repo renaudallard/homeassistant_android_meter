@@ -176,13 +176,8 @@ class CropActivity : Activity() {
             val (text, crop) = try {
                 val reply = findCounter(url)
                 reply.crop?.let { settings.crop = it }
-                when (reply.error) {
-                    null -> getString(R.string.crop_found) to reply.crop
-                    "crop_locked" -> getString(R.string.crop_locked) to null
-                    "counter_not_found" -> getString(R.string.crop_not_found) to null
-                    "no_frame" -> getString(R.string.crop_no_frame) to null
-                    else -> getString(R.string.crop_refused, reply.error) to null
-                }
+                val error = reply.error
+                if (error == null) getString(R.string.crop_found) to reply.crop else refused(error) to null
             } catch (e: Exception) {
                 getString(R.string.crop_failed, e.message ?: e.javaClass.simpleName) to null
             }
@@ -195,6 +190,15 @@ class CropActivity : Activity() {
                 find.isEnabled = true
             }
         }.start()
+    }
+
+    /* What Home Assistant's refusal of a crop or of a Find means. */
+    private fun refused(error: String): String = when (error) {
+        "crop_locked" -> getString(R.string.crop_locked)
+        "counter_not_found" -> getString(R.string.crop_not_found)
+        "no_frame" -> getString(R.string.crop_no_frame)
+        "not_loaded" -> getString(R.string.crop_not_loaded)
+        else -> getString(R.string.crop_refused, error)
     }
 
     private fun stepper(label: Int, value: () -> String, change: (Int) -> Unit): LinearLayout {
@@ -237,11 +241,8 @@ class CropActivity : Activity() {
             val text = try {
                 val reply = sendCrop(url, crop)
                 reply.crop?.let { settings.crop = it }
-                when (reply.error) {
-                    null -> getString(R.string.crop_saved)
-                    "crop_locked" -> getString(R.string.crop_locked)
-                    else -> getString(R.string.crop_refused, reply.error)
-                }
+                val error = reply.error
+                if (error == null) getString(R.string.crop_saved) else refused(error)
             } catch (e: Exception) {
                 getString(R.string.crop_failed, e.message ?: e.javaClass.simpleName)
             }
