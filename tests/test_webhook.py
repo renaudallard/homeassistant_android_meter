@@ -105,6 +105,28 @@ async def test_an_error_is_logged_without_the_webhook_id(
     assert not _logged(caplog, entry)
 
 
+async def test_the_websocket_webhook_command_is_refused(
+    hass: HomeAssistant, hass_ws_client: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    """It hands a stand-in request, with no body type, to the webhook."""
+    entry = await _entry(hass)
+    ws = await hass_ws_client(hass)
+    await ws.send_json(
+        {
+            "id": 5,
+            "type": "webhook/handle",
+            "webhook_id": entry.data["webhook_id"],
+            "method": "POST",
+            "body": '{"find": true}',
+            "headers": {"Content-Type": "application/json"},
+        }
+    )
+    message = await ws.receive_json()
+    assert message["success"]
+    assert message["result"]["status"] == HTTPStatus.BAD_REQUEST
+    assert not _logged(caplog, entry)
+
+
 async def test_finds_run_one_at_a_time(hass: HomeAssistant, hass_client_no_auth: Any) -> None:
     """Each decodes the last picture whole: side by side they would take
     the memory of as many pictures."""

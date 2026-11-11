@@ -662,6 +662,10 @@ class Meter:
         crop in force for its editor. An error is logged here: Home
         Assistant would log it with the webhook id, the meter's secret.
         """
+        # Home Assistant's websocket command for webhooks hands a stand in
+        # request, without a body type. Only the phone posts here.
+        if not isinstance(request, web.Request):
+            return web.Response(status=HTTPStatus.BAD_REQUEST)
         try:
             return await self._async_answer(request)
         except Exception:
