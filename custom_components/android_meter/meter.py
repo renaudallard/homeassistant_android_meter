@@ -514,7 +514,9 @@ class Meter:
         picture: tuple[bytes, datetime] | None,
     ) -> None:
         """What async_configure does, under the lock. The options applied
-        are stored in the entry too."""
+        are stored in the entry too, and the state at once with them: a
+        reading kept from before new decimal drums would be read on the
+        wrong scale."""
         settings = Settings.from_options(options)
         fresh = forget or settings.shape() != self.settings.shape()
         rescaled = settings.decimals != self.settings.decimals
@@ -556,7 +558,7 @@ class Meter:
             if not silent:
                 self.status = STATUS_UNTAUGHT if settings.geometry is not None else STATUS_NO_CROP
             self.last = None
-        self._save()
+        await self._store.async_save(self._data())
         self._arm_silence()
         entry = self.hass.config_entries.async_get_entry(self.entry_id)
         if entry is not None:

@@ -256,11 +256,15 @@ async def test_a_crop_of_the_last_drums(
 
 
 async def test_new_decimal_drums_ask_for_the_reading(
-    hass: HomeAssistant, hass_client_no_auth: Any, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant,
+    hass_client_no_auth: Any,
+    freezer: FrozenDateTimeFactory,
+    hass_storage: dict[str, Any],
 ) -> None:
     """The same drums read with one decimal less are ten times the volume:
     the reading is dropped and asked again, the digits are kept. The
-    reading is shown with the new decimals."""
+    reading is shown with the new decimals. The reading dropped is stored
+    at once, as the new decimals are."""
     entry = await _entry(hass)
     client = await hass_client_no_auth()
     rng = random.Random(13)
@@ -275,6 +279,7 @@ async def test_new_decimal_drums_ask_for_the_reading(
     assert precision["suggested_display_precision"] == 3
     await _crop(hass, decimals=2)
     await hass.async_block_till_done()
+    assert hass_storage[f"{DOMAIN}.{entry.entry_id}"]["data"]["reading"] is None
     precision = er.async_get(hass).async_get("sensor.gas_meter_reading").options["sensor"]
     assert precision["suggested_display_precision"] == 2
     assert hass.states.get("sensor.gas_meter_reading").state == "unknown"
