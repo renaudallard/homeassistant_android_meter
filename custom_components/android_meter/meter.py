@@ -158,7 +158,7 @@ class Settings:
 
 
 def parse_reading(text: str, settings: Settings) -> Decimal | None:
-    """The reading typed in the options, or None when it is not one.
+    """The reading typed to teach, or None when it is not one.
 
     It is the whole meter: a crop may leave drums out when the phone
     cannot see them all. Drums left of the crop are kept, and decimals
