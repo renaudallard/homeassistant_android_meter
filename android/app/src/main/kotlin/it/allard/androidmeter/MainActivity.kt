@@ -298,6 +298,8 @@ class MainActivity : Activity() {
         if (CaptureService.allowed(this)) {
             action()
         } else {
+            /* The watch cannot run without them: no more notices to resume it. */
+            settings.wanted = false
             Status.say(getString(R.string.denied))
         }
     }
