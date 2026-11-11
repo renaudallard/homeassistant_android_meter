@@ -203,7 +203,7 @@ class MainActivity : Activity() {
             return
         }
         val port = uri.port
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.link_title)
             .setMessage(getString(R.string.link_text, if (port > 0) "$host:$port" else host))
             .setPositiveButton(R.string.link_use) { _, _ ->
@@ -213,7 +213,14 @@ class MainActivity : Activity() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+        /*
+         * Another app's window drawn over the dialog could show another host:
+         * such windows are hidden, and taps through one are dropped.
+         */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dialog.window?.setHideOverlayWindows(true)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).filterTouchesWhenObscured = true
     }
+
 
     override fun onResume() {
         super.onResume()
