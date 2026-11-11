@@ -166,8 +166,8 @@ class MainActivity : Activity() {
     private fun fromIntent(intent: Intent?) {
         if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
         when (intent.action) {
-            Intent.ACTION_VIEW -> intent.dataString?.let { offer(it) }
-            Intent.ACTION_SEND -> sharedText(intent)?.let { offer(it) }
+            Intent.ACTION_VIEW -> intent.dataString?.let { offer(it, false) }
+            Intent.ACTION_SEND -> sharedText(intent)?.let { offer(it, false) }
             ACTION_RESUME -> resuming = true
         }
     }
@@ -183,13 +183,17 @@ class MainActivity : Activity() {
         null
     }
 
+    /*
+     * Plain text only: an item that points to content would be read from
+     * the app that put it there. The link taken is not left there.
+     */
     private fun paste() {
         val clip = getSystemService(ClipboardManager::class.java).primaryClip
-        val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)
-        offer(text?.toString() ?: "")
+        offer(clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString() ?: "", true)
     }
 
-    private fun offer(text: String) {
+
+    private fun offer(text: String, pasted: Boolean) {
         val address = pairingAddress(text)
         val uri = address?.let { Uri.parse(it) }
         /* As the connection names it: letters that only look like others show as what they are. */
@@ -209,6 +213,7 @@ class MainActivity : Activity() {
             .setPositiveButton(R.string.link_use) { _, _ ->
                 settings.url = address
                 url.setText(address)
+                if (pasted) getSystemService(ClipboardManager::class.java).clearPrimaryClip()
                 Status.say(getString(R.string.link_set))
             }
             .setNegativeButton(android.R.string.cancel, null)
