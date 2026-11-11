@@ -56,6 +56,7 @@ import android.widget.Spinner
 import android.widget.TextView
 
 private const val PERMISSIONS = 1
+private const val ASKED = "asked"
 
 /**
  * The address to post to, the camera, Start and Stop, and a button for a
@@ -81,7 +82,11 @@ class MainActivity : Activity() {
      * under way is Status.shooting, which the watch waits on.
      */
     private var single: Shot? = null
-    private var pending: (() -> Unit)? = null
+    /*
+     * What to do once the permissions asked for are granted. Kept with the
+     * screen, which Android may make anew while it asks.
+     */
+    private var pending: Asked? = null
     /*
      * Opened from the Resume notification: start once in front. Any app may
      * open this screen so, which only ever resumes a watch the user left on.
@@ -123,13 +128,22 @@ class MainActivity : Activity() {
         column.addView(picture, MATCH_PARENT, WRAP_CONTENT)
         setContentView(ScrollView(this).apply { addView(column) })
 
-        toggle.setOnClickListener { if (Status.running) stop() else withPermissions(::start) }
-        shoot.setOnClickListener { withPermissions(::shootOnce) }
+        toggle.setOnClickListener { if (Status.running) stop() else withPermissions(Asked.START) }
+        shoot.setOnClickListener { withPermissions(Asked.SHOOT) }
         unlimited.setOnClickListener { askUnlimited() }
         pasteButton.setOnClickListener { paste() }
         crop.setOnClickListener { cropIt() }
         loadLenses()
-        if (savedInstanceState == null) fromIntent(intent)
+        if (savedInstanceState == null) {
+            fromIntent(intent)
+        } else {
+            pending = savedInstanceState.getString(ASKED)?.let { Asked.valueOf(it) }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        pending?.let { outState.putString(ASKED, it.name) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -186,7 +200,7 @@ class MainActivity : Activity() {
         refresh()
         if (resuming) {
             resuming = false
-            if (!Status.running && settings.wanted) withPermissions(::start)
+            if (!Status.running && settings.wanted) withPermissions(Asked.START)
         }
     }
 
@@ -269,7 +283,7 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun withPermissions(action: () -> Unit) {
+    private fun withPermissions(action: Asked) {
         if (!save()) {
             Status.say(getString(R.string.bad_url))
             return
@@ -280,7 +294,7 @@ class MainActivity : Activity() {
         }
         val wanted = asked.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
         if (wanted.isEmpty()) {
-            action()
+            act(action)
             return
         }
         pending = action
@@ -293,11 +307,18 @@ class MainActivity : Activity() {
         pending = null
         if (code != PERMISSIONS || action == null) return
         if (CaptureService.allowed(this)) {
-            action()
+            act(action)
         } else {
             /* The watch cannot run without them: no more notices to resume it. */
             settings.wanted = false
             Status.say(getString(R.string.denied))
+        }
+    }
+
+    private fun act(action: Asked) {
+        when (action) {
+            Asked.START -> start()
+            Asked.SHOOT -> shootOnce()
         }
     }
 
@@ -336,6 +357,8 @@ class MainActivity : Activity() {
             single = shootAndSend(this, handler, true, { true }) { Status.shooting(false) }
         }
     }
+
+    private enum class Asked { START, SHOOT }
 
     companion object {
         const val ACTION_RESUME = "it.allard.androidmeter.RESUME"
