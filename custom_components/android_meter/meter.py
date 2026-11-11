@@ -312,15 +312,12 @@ class Meter:
 
     async def async_unload(self) -> None:
         """Store the state once the frame or change under way is done, and
-        take no more, which would arm the timer and the store again. The
-        Repairs notice goes until the meter is loaded again: a disabled
-        one cannot be taught."""
+        take no more, which would arm the timer and the store again."""
         async with self._lock:
             self._closed = True
             if self._silence is not None:
                 self._silence()
                 self._silence = None
-            ir.async_delete_issue(self.hass, DOMAIN, teach_issue_id(self.entry_id))
             await self._store.async_save(self._data())
 
     def _data(self) -> dict[str, Any]:
@@ -362,7 +359,12 @@ class Meter:
 
     @callback
     def async_sync_issue(self) -> None:
-        """Raise the Repairs notice asking for a reading, or clear it."""
+        """Raise the Repairs notice asking for a reading, or clear it.
+
+        It is the entry's: Home Assistant hides it while the meter is
+        disabled and removes it with the meter. It stays over a reload,
+        so that one ignored stays so.
+        """
         issue = teach_issue_id(self.entry_id)
         if self.untaught():
             # Named, as there may be more than one meter.
@@ -371,6 +373,7 @@ class Meter:
                 self.hass,
                 DOMAIN,
                 issue,
+                config_entry_id=self.entry_id,
                 is_fixable=True,
                 severity=ir.IssueSeverity.WARNING,
                 translation_key="teach",

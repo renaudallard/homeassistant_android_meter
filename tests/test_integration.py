@@ -39,7 +39,7 @@ from urllib.parse import quote
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.config_entries import SOURCE_USER
+from homeassistant.config_entries import SOURCE_USER, ConfigEntryDisabler
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import ServiceValidationError
@@ -642,21 +642,39 @@ async def test_an_unloaded_meter_takes_no_change(
     assert entry.options["x"] == entry.options["width"] == 0
 
 
-async def test_an_unloaded_meter_asks_for_no_reading(
+async def test_the_repairs_notice_outlives_a_reload(
     hass: HomeAssistant, hass_client_no_auth: Any
 ) -> None:
-    """A disabled meter cannot be taught, so its Repairs notice goes, and
-    comes back with the meter."""
+    """A notice ignored stays ignored when the meter is reloaded. Home
+    Assistant hides it while the meter is disabled, and removes it with
+    the meter."""
     entry = await _entry(hass)
     await _post(await hass_client_no_auth(), entry, synth.frame(1234567, LAYOUT, random.Random(7)))
     await _options(hass, entry, **CROP)
     issues = ir.async_get(hass)
     issue_id = f"teach_{entry.entry_id}"
     assert issues.async_get_issue(DOMAIN, issue_id) is not None
-    assert await hass.config_entries.async_unload(entry.entry_id)
+    issues.async_ignore(DOMAIN, issue_id, True)
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    issue = issues.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.dismissed_version is not None
+
+    assert await hass.config_entries.async_set_disabled_by(entry.entry_id, ConfigEntryDisabler.USER)
+    await hass.async_block_till_done()
+    issue = issues.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issues.async_is_hidden(issue)
+    assert await hass.config_entries.async_set_disabled_by(entry.entry_id, None)
+    await hass.async_block_till_done()
+    issue = issues.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert not issues.async_is_hidden(issue)
+
+    assert await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
     assert issues.async_get_issue(DOMAIN, issue_id) is None
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    assert issues.async_get_issue(DOMAIN, issue_id) is not None
 
 
 async def test_a_reading_is_asked_in_repairs(

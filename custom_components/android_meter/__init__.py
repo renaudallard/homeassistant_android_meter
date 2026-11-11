@@ -35,11 +35,10 @@ from homeassistant.components import webhook
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
 
 from .const import CONF_WEBHOOK_ID, DOMAIN, STORAGE_VERSION
-from .meter import Meter, teach_issue_id
+from .meter import Meter
 
 PLATFORMS = [
     Platform.BUTTON,
@@ -87,4 +86,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: MeterConfigEntry) -> bo
 async def async_remove_entry(hass: HomeAssistant, entry: MeterConfigEntry) -> None:
     store: Store[dict[str, object]] = Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
     await store.async_remove()
-    ir.async_delete_issue(hass, DOMAIN, teach_issue_id(entry.entry_id))
