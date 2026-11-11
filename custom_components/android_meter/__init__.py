@@ -68,7 +68,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: MeterConfigEntry) -> boo
         allowed_methods=["POST"],
     )
     entry.async_on_unload(lambda: webhook.async_unregister(hass, webhook_id))
-    entry.async_on_unload(meter.async_unload)
     entry.async_on_unload(entry.add_update_listener(_async_entry_updated))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
@@ -80,7 +79,12 @@ async def _async_entry_updated(hass: HomeAssistant, entry: MeterConfigEntry) -> 
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: MeterConfigEntry) -> bool:
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        return False
+    # Waited for here, not as a task of the unload, which Home Assistant
+    # stops waiting for after 10 s: the meter loaded next reads the store.
+    await entry.runtime_data.async_unload()
+    return True
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: MeterConfigEntry) -> None:

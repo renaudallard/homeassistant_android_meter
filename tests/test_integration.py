@@ -628,6 +628,41 @@ async def test_a_frame_read_during_an_unload_leaves_no_timer(
     assert meter._silence is None
 
 
+async def test_an_unload_waits_for_the_frame_however_long(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """Home Assistant waits 10 s at most for the tasks of an unload. The
+    meter's state is stored once the frame is read, whatever it takes."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    await _post(client, entry, synth.frame(1234567, LAYOUT, random.Random(12), light=0.9, shade=0))
+    meter = entry.runtime_data
+    release = threading.Event()
+    read = meter._read
+    wait = asyncio.wait
+
+    def slow(*args: Any) -> Any:
+        release.wait(10)
+        return read(*args)
+
+    def hurried(tasks: Any, timeout: float | None = None) -> Any:
+        # The 10 s of the unload, as if they were over.
+        return wait(tasks, timeout=0 if timeout == 10 else timeout)
+
+    with patch.object(meter, "_read", slow), patch.object(asyncio, "wait", hurried):
+        frame = hass.async_create_task(meter.async_frame(meter.frame))
+        while not meter._lock.locked():
+            await asyncio.sleep(0)
+        unload = hass.async_create_task(hass.config_entries.async_unload(entry.entry_id))
+        for _ in range(20):
+            await asyncio.sleep(0.001)
+        assert not unload.done()
+        release.set()
+        await frame
+        assert await unload
+    assert meter._closed
+
+
 async def test_an_unloaded_meter_takes_no_change(
     hass: HomeAssistant, hass_client_no_auth: Any
 ) -> None:
