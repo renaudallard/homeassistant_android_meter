@@ -162,9 +162,20 @@ class MainActivity : Activity() {
     private fun fromIntent(intent: Intent?) {
         when (intent?.action) {
             Intent.ACTION_VIEW -> intent.dataString?.let { offer(it) }
-            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)?.let { offer(it) }
+            Intent.ACTION_SEND -> sharedText(intent)?.let { offer(it) }
             ACTION_RESUME -> resuming = true
         }
+    }
+
+    /*
+     * Before Android 13 reading one extra unparcels them all: an object of
+     * a class unknown here, shared by another app, would kill the app and
+     * the watch with it.
+     */
+    private fun sharedText(intent: Intent): String? = try {
+        intent.getStringExtra(Intent.EXTRA_TEXT)
+    } catch (e: RuntimeException) {
+        null
     }
 
     private fun paste() {
