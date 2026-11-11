@@ -181,7 +181,8 @@ in, then goes on learning on its own as the meter turns.
    notice. The screen shows the last picture with each drum outlined. The
    **Teach the reading** box on the device page does the same. The picture
    is the Frame image's: with that image disabled nothing is taught, as no
-   picture shows what to type.
+   picture shows what to type. An image enabled again shows about 30
+   seconds later, once Home Assistant has reloaded the meter.
 2. Type the meter's reading, every drum from left to right, for example
    `01234.567`, drums left of the crop included. Decimal drums right of
    the crop may be typed too; they are left out. A drum caught between two
