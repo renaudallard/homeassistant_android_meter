@@ -41,9 +41,10 @@ from unittest.mock import patch
 
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
 
 from tests import synth
-from tests.test_integration import LAYOUT, _entry, _post
+from tests.test_integration import LAYOUT, _entry, _open, _post
 
 
 def _logged(caplog: pytest.LogCaptureFixture, entry: Any) -> bool:
@@ -186,3 +187,17 @@ async def test_a_frame_while_another_waits_is_refused(
         assert (await second).status == HTTPStatus.SERVICE_UNAVAILABLE
         assert (await first).status == HTTPStatus.OK
     assert (await _post(client, entry, data)).status == HTTPStatus.OK
+
+
+@pytest.mark.parametrize("field", ["interval", "max_flow"])
+async def test_the_phone_settings_take_only_numbers(hass: HomeAssistant, field: str) -> None:
+    """The number selector lets NaN through: a NaN largest flow would
+    fail every frame from then on."""
+    entry = await _entry(hass)
+    result = await _open(hass, entry, "phone")
+    fields = {"interval": 60, "torch": True, "max_flow": 6.0, field: "nan"}
+    result = await hass.config_entries.options.async_configure(result["flow_id"], fields)
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {field: "not_a_number"}
+    assert entry.options["max_flow"] == 6.0
+    assert entry.options["interval"] == 60

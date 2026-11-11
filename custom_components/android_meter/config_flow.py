@@ -34,6 +34,7 @@ phone, or with controls on the device page next to the Frame image.
 
 from __future__ import annotations
 
+import math
 from datetime import datetime
 from typing import Any
 from urllib.parse import quote
@@ -183,7 +184,15 @@ class AndroidMeterOptionsFlow(OptionsFlow):
         if meter is None:
             return self.async_abort(reason="not_loaded")
         current = self._current()
+        errors: dict[str, str] = {}
         if user_input is not None:
+            # The number selector lets NaN through.
+            errors = {
+                key: "not_a_number"
+                for key in (CONF_INTERVAL, CONF_MAX_FLOW)
+                if not math.isfinite(user_input[key])
+            }
+        if user_input is not None and not errors:
             changes = {
                 CONF_INTERVAL: int(user_input[CONF_INTERVAL]),
                 CONF_TORCH: bool(user_input[CONF_TORCH]),
@@ -207,5 +216,6 @@ class AndroidMeterOptionsFlow(OptionsFlow):
         return self.async_show_form(
             step_id="phone",
             data_schema=schema,
+            errors=errors,
             description_placeholders={"webhook_url": url},
         )

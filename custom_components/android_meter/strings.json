@@ -64,7 +64,8 @@
       "no_crop": "Set the crop before teaching a reading.",
       "no_frame": "No picture was shown to teach the reading from: none has come yet, or the Frame image is disabled. An image just enabled shows about 30 seconds later. Once one shows, type the reading it shows.",
       "nothing_at_rest": "No drum shows a whole digit on the picture shown. Wait for the meter to stop and try again.",
-      "no_reading": "Type the reading the picture shows, or tick Forget the digits learnt."
+      "no_reading": "Type the reading the picture shows, or tick Forget the digits learnt.",
+      "not_a_number": "Type a number."
     },
     "abort": {
       "not_loaded": "The meter is not running. Check the integration and try again."
