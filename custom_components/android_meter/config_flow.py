@@ -66,7 +66,7 @@ from .const import (
     MAX_INTERVAL,
     MIN_INTERVAL,
 )
-from .teach import async_teach, teach_placeholders, teach_schema
+from .teach import async_teach, teach_schema, teach_screen
 
 
 def _webhook_url(hass: HomeAssistant, webhook_id: str) -> str:
@@ -166,12 +166,12 @@ class AndroidMeterOptionsFlow(OptionsFlow):
             errors = await async_teach(meter, user_input, self._picture)
             if not errors:
                 return self.async_create_entry(data=self._current())
-        self._picture = meter.picture()
+        placeholders, self._picture = teach_screen(self.hass, entry.entry_id, meter)
         return self.async_show_form(
             step_id="teach",
             data_schema=teach_schema(),
             errors=errors,
-            description_placeholders=teach_placeholders(self.hass, entry.entry_id, meter),
+            description_placeholders=placeholders,
         )
 
     async def async_step_phone(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

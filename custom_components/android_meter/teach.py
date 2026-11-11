@@ -82,15 +82,21 @@ def frame_picture(hass: HomeAssistant, entry_id: str, meter: Meter) -> str:
     return f"![]({url}&crop={crop}&at={taken})"
 
 
-def teach_placeholders(hass: HomeAssistant, entry_id: str, meter: Meter) -> dict[str, str]:
-    """The picture, the digits learnt and an example of a reading."""
+def teach_screen(
+    hass: HomeAssistant, entry_id: str, meter: Meter
+) -> tuple[dict[str, str], tuple[bytes, datetime] | None]:
+    """The teaching form's placeholders: the picture, the digits learnt
+    and an example of a reading. And the frame shown, the one to teach,
+    none when the Frame image cannot show it, disabled say."""
     known = meter.known()
-    return {
+    image = frame_picture(hass, entry_id, meter)
+    placeholders = {
         **counter_placeholders(meter),
-        "frame_image": frame_picture(hass, entry_id, meter),
+        "frame_image": image,
         "known": " ".join(str(d) for d in known) or "-",
         "unknown": " ".join(str(d) for d in range(10) if d not in known) or "-",
     }
+    return placeholders, meter.picture() if image else None
 
 
 def counter_placeholders(meter: Meter) -> dict[str, str]:

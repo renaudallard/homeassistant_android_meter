@@ -467,6 +467,21 @@ async def test_the_teaching_screen_shows_the_picture(
     assert placeholders["unknown"] == "0 1 2 3 4 5 6 7 8 9"
 
 
+async def test_no_picture_shown_none_taught(hass: HomeAssistant, hass_client_no_auth: Any) -> None:
+    """With the Frame image disabled the form shows no picture, so it has
+    none to teach."""
+    entry = await _entry(hass)
+    await _post(await hass_client_no_auth(), entry, synth.frame(1234567, LAYOUT, random.Random(6)))
+    await _options(hass, entry, **CROP)
+    er.async_get(hass).async_update_entity(
+        "image.gas_meter_frame", disabled_by=er.RegistryEntryDisabler.USER
+    )
+    await hass.async_block_till_done()
+    result = await _options(hass, entry, reading="01234.567")
+    assert result["errors"] == {"base": "no_frame"}
+    assert result["description_placeholders"]["frame_image"] == ""
+
+
 async def test_the_picture_shown_is_taught(
     hass: HomeAssistant, hass_client_no_auth: Any, freezer: FrozenDateTimeFactory
 ) -> None:
