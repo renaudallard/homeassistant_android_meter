@@ -43,6 +43,7 @@ import android.os.HandlerThread
 import android.os.PowerManager
 import android.text.InputType
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.AdapterView
@@ -106,6 +107,8 @@ class MainActivity : Activity() {
         url = EditText(this).apply {
             hint = getString(R.string.url_hint)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            /* It holds the webhook's secret: not for the keyboard to learn. */
+            imeOptions = EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
             setSingleLine()
             setText(settings.url)
         }
@@ -158,10 +161,9 @@ class MainActivity : Activity() {
      * androidmeter://setup?url=<webhook address>. It reaches the app as a
      * link opened, as text shared from the camera, or pasted. Any page or
      * app can hand such text over, so the address is only taken once the
-     * user agrees to the host it names; the rest of it is the webhook's
-     * secret and stays off the screen. Opened again from Recents, the screen
-     * is handed the intent it was first opened with: that is not offered
-     * again.
+     * user agrees to the host it names; the dialog shows nothing of the
+     * rest, the webhook's secret. Opened again from Recents, the screen is
+     * handed the intent it was first opened with: that is not offered again.
      */
     private fun fromIntent(intent: Intent?) {
         if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
