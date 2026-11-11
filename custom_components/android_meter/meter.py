@@ -307,7 +307,7 @@ class Meter:
             if self.read_at is None:
                 self.read_at = dt_util.utcnow()
         self._arm_silence()
-        self._sync_issue()
+        self.async_sync_issue()
 
     async def async_unload(self) -> None:
         """Store the state once the frame or change under way is done, and
@@ -346,7 +346,7 @@ class Meter:
 
     @callback
     def _notify(self) -> None:
-        self._sync_issue()
+        self.async_sync_issue()
         for update in list(self._listeners):
             update()
 
@@ -357,7 +357,7 @@ class Meter:
         )
 
     @callback
-    def _sync_issue(self) -> None:
+    def async_sync_issue(self) -> None:
         """Raise the Repairs notice asking for a reading, or clear it."""
         issue = teach_issue_id(self.entry_id)
         if self.untaught():

@@ -615,6 +615,11 @@ async def test_a_reading_is_asked_in_repairs(
     assert issue is not None
     assert issue.is_fixable
     assert issue.translation_placeholders == {"name": entry.title}
+    hass.config_entries.async_update_entry(entry, title="Water meter")
+    await hass.async_block_till_done()
+    issue = issues.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.translation_placeholders == {"name": "Water meter"}
 
     client = await hass_client()
     flow = await start_repair_fix_flow(client, DOMAIN, issue_id)
