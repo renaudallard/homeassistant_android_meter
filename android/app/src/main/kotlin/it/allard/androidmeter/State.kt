@@ -75,6 +75,9 @@ object Status {
         private set
     @Volatile var picture: ByteArray? = null
         private set
+    /* A picture taken by hand is under way: the watch waits for the camera. */
+    @Volatile var shooting = false
+        private set
 
     private val main = Handler(Looper.getMainLooper())
     private var listener: (() -> Unit)? = null
@@ -90,6 +93,11 @@ object Status {
 
     fun say(value: String) {
         text = value
+        changed()
+    }
+
+    fun shooting(value: Boolean) {
+        shooting = value
         changed()
     }
 

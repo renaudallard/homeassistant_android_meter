@@ -279,6 +279,7 @@ cost of the year and of the month.
   notification opens the app to ask for it first; one taken back after
   the notification came up brings it up again, to do so. Refusing it there
   ends the watch: no notification comes back until **Start** is pressed.
+  A watch started during **Take one picture** waits for that picture.
 - A reading typed lower than the current one is a correction. Up to 10%
   lower, Home Assistant counts the difference as negative consumption and
   logs once that the sensor is not strictly increasing. More than 10%

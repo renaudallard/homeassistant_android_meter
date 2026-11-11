@@ -35,10 +35,10 @@ import java.util.concurrent.CancellationException
 
 /**
  * Takes a picture and posts it, on the handler's thread, then calls then
- * with the seconds to wait before the next one, unless the shot returned
- * is cancelled. once only changes the wording, for a picture taken by
- * hand. Once live turns false, as the watch stops, nothing more is said
- * of the picture, which would cover what came since.
+ * once with the seconds to wait before the next one, also when the shot
+ * returned is cancelled. once only changes the wording, for a picture
+ * taken by hand. Once live turns false, as the watch stops, nothing more
+ * is said of the picture, which would cover what came since.
  */
 fun shootAndSend(
     context: Context,
@@ -61,11 +61,10 @@ fun shootAndSend(
     val shot = Shot(context, camera, settings.torch, handler) { result ->
         val now = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date())
         val jpeg = result.getOrElse {
-            if (it is CancellationException) {
-                say(context.getString(R.string.cancelled))
-                return@Shot
-            }
-            say(context.getString(R.string.camera_failed, it.message ?: it.javaClass.simpleName))
+            say(
+                if (it is CancellationException) context.getString(R.string.cancelled)
+                else context.getString(R.string.camera_failed, it.message ?: it.javaClass.simpleName)
+            )
             then(settings.interval)
             return@Shot
         }

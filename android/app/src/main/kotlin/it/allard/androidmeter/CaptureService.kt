@@ -68,6 +68,10 @@ class CaptureService : Service() {
             if (!running) return
             /* Held until the next picture, and a margin, should this one never end. */
             wakeLock?.acquire((Settings(this@CaptureService).interval + WAKE_MARGIN) * 1000L)
+            if (Status.shooting) {
+                handler.postDelayed(this, BUSY_MS)
+                return
+            }
             shot = shootAndSend(this@CaptureService, handler, false, { running }) { seconds ->
                 shot = null
                 if (running) {
@@ -184,6 +188,7 @@ class CaptureService : Service() {
         private const val CHANNEL = "capture"
         private const val NOTIFICATION = 1
         private const val WAKE_MARGIN = 120
+        private const val BUSY_MS = 1000L
 
         /* The camera, and from Android 17 the local network Home Assistant is on. */
         val needed: List<String>

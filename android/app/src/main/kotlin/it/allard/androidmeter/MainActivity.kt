@@ -78,10 +78,9 @@ class MainActivity : Activity() {
     /*
      * The last single picture, on its own thread, where it is cancelled
      * with the activity; one already done ignores that. Whether one is
-     * under way is told on the main thread by shooting.
+     * under way is Status.shooting, which the watch waits on.
      */
     private var single: Shot? = null
-    private var shooting = false
     private var pending: (() -> Unit)? = null
     /*
      * Opened from the Resume notification: start once in front. Any app may
@@ -187,8 +186,7 @@ class MainActivity : Activity() {
         refresh()
         if (resuming) {
             resuming = false
-            /* Both would open the camera, as refresh() says. */
-            if (!Status.running && !shooting && settings.wanted) withPermissions(::start)
+            if (!Status.running && settings.wanted) withPermissions(::start)
         }
     }
 
@@ -247,9 +245,8 @@ class MainActivity : Activity() {
     private fun refresh() {
         val running = Status.running
         toggle.text = getString(if (running) R.string.stop else R.string.start)
-        /* Both would open the camera, and one of them would fail. */
-        toggle.isEnabled = running || !shooting
-        shoot.isEnabled = !running && !shooting
+        /* The watch waits for a picture taken by hand, not the other way round. */
+        shoot.isEnabled = !running && !Status.shooting
         url.isEnabled = !running
         camera.isEnabled = !running
         status.text = Status.text ?: getString(R.string.idle)
@@ -326,8 +323,9 @@ class MainActivity : Activity() {
     }
 
     private fun shootOnce() {
-        if (shooting) return
-        shooting = true
+        /* The watch starts on this thread too, so the two cannot cross. */
+        if (Status.running || Status.shooting) return
+        Status.shooting(true)
         refresh()
         val t = thread ?: HandlerThread("single").also {
             it.start()
@@ -335,12 +333,7 @@ class MainActivity : Activity() {
         }
         val handler = Handler(t.looper)
         handler.post {
-            single = shootAndSend(this, handler, true, { true }) {
-                runOnUiThread {
-                    shooting = false
-                    refresh()
-                }
-            }
+            single = shootAndSend(this, handler, true, { true }) { Status.shooting(false) }
         }
     }
 
