@@ -114,9 +114,10 @@ To install by hand, unpack `android_meter.zip` from the latest release into
 Download `android-meter-<version>.apk` from the
 [latest release](https://github.com/renaudallard/homeassistant_android_meter/releases/latest)
 on the phone and open it; Android asks to allow installing from the browser
-or file manager the first time. Every release carries the app and the
-integration under the same version, and an update installs over the
-previous one.
+or file manager the first time. Every release carries the app, with a
+version of its own that changes only when the app does: a release whose
+app has the version you already run needs nothing on the phone. An update
+installs over the previous one.
 
 To build it yourself, run `./gradlew assembleRelease` in `android/` (JDK 21,
 Android SDK platform 37).

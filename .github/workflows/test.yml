@@ -31,13 +31,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-      # A release carries the integration and the app under one version.
-      - name: Versions agree
-        run: |
-          integration=$(jq -r .version custom_components/android_meter/manifest.json)
-          app=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' android/app/build.gradle.kts)
-          test "$integration" = "$app" ||
-            { echo "manifest.json says $integration, the app $app" >&2; exit 1; }
       - name: Lint
         run: |
           ruff check .
