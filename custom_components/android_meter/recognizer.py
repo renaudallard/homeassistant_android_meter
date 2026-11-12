@@ -44,6 +44,7 @@ and the tests feed it plain images.
 from __future__ import annotations
 
 import io
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -410,10 +411,16 @@ class Patches:
 
     Shared, because the drums print the same figures and the last one
     shows each of them within hours, where a high drum may take years.
+    Yet each drum shows them a little apart from the others, a red one
+    most of all, and a drum standing still keeps adding its own. So each
+    mask is kept with the drum it came from, and a digit with too many
+    loses the oldest mask of the drum that holds the most: a drum standing
+    still on a digit cannot wipe out how the others show it. Masks stored
+    without their drum count as coming from one more.
     """
 
     def __init__(self) -> None:
-        self._digits: list[list[int]] = [[] for _ in range(10)]
+        self._digits: list[list[tuple[int, int | None]]] = [[] for _ in range(10)]
 
     def known(self, digit: int) -> bool:
         return bool(self._digits[digit])
@@ -427,35 +434,49 @@ class Patches:
         kept = self._digits[digit]
         if not kept:
             return None
-        return min(_distance(moved, known) for known in kept for moved in shifts)
+        return min(_distance(moved, known) for known, _ in kept for moved in shifts)
 
-    def learn(self, digit: int, mask: int) -> None:
+    def learn(self, digit: int, mask: int, drum: int) -> None:
+        """Keep mask as digit, as drum showed it."""
         kept = self._digits[digit]
-        kept.append(mask)
+        kept.append((mask, drum))
         if len(kept) > PER_DIGIT:
-            del kept[0]
+            held = Counter(source for _, source in kept)
+            most = max(held.values())
+            del kept[next(i for i, (_, source) in enumerate(kept) if held[source] == most)]
 
     def dump(self) -> list[list[str]]:
-        return [[format(mask, "x") for mask in kept] for kept in self._digits]
+        return [[format(mask, "x") for mask, _ in kept] for kept in self._digits]
+
+    def drums(self) -> list[list[int | None]]:
+        """The drum each mask of dump() came from."""
+        return [[source for _, source in kept] for kept in self._digits]
 
     @classmethod
-    def load(cls, data: object) -> Patches:
-        """Rebuild from dump(), keeping only what is well formed."""
+    def load(cls, data: object, drums: object = None) -> Patches:
+        """Rebuild from dump() and drums(), keeping only what is well
+        formed. A mask whose drum is not known comes from none."""
         patches = cls()
         if not isinstance(data, list) or len(data) != 10:
             return patches
+        sources = drums if isinstance(drums, list) and len(drums) == 10 else [None] * 10
         for digit, kept in enumerate(data):
             if not isinstance(kept, list):
                 continue
-            for text in kept[-PER_DIGIT:]:
+            tags = sources[digit]
+            if not isinstance(tags, list) or len(tags) != len(kept):
+                tags = [None] * len(kept)
+            for text, tag in list(zip(kept, tags, strict=True))[-PER_DIGIT:]:
                 if not isinstance(text, str) or not 0 < len(text) <= _BITS // 4:
                     continue
                 try:
                     mask = int(text, 16)
                 except ValueError:
                     continue
-                if mask > 0:
-                    patches._digits[digit].append(mask)
+                if mask <= 0:
+                    continue
+                drum = tag if type(tag) is int and tag >= 0 else None
+                patches._digits[digit].append((mask, drum))
         return patches
 
 
@@ -479,9 +500,9 @@ def _reachable(low: int, high: int, digits: int) -> list[set[int]]:
 def learn_reading(cells: Sequence[Cell], patches: Patches, value: int) -> int:
     """Learn every cell at rest as the digit value puts there."""
     learnt = 0
-    for cell, digit in zip(cells, _figures(value, len(cells)), strict=True):
+    for drum, (cell, digit) in enumerate(zip(cells, _figures(value, len(cells)), strict=True)):
         if cell.mask is not None and cell.at_rest:
-            patches.learn(digit, cell.mask)
+            patches.learn(digit, cell.mask, drum)
             learnt += 1
     return learnt
 
@@ -602,7 +623,7 @@ def read(cells: Sequence[Cell], patches: Patches, low: int, high: int) -> Read:
         else:
             fresh = trusted[i] and DUPLICATE < dist <= MATCH and all(known[d] for d in reach[i])
         if fresh:
-            patches.learn(digit, cell.mask)
+            patches.learn(digit, cell.mask, i)
             learnt += 1
     return Read(value, near[-1], None, tuple(nearest), tuple(trusted), at_rest, learnt)
 

@@ -321,7 +321,7 @@ class Meter:
             self.read_at = _time(data.get("read_at"))
             self.locked = data.get("locked") is True
             if data.get("shape") == self.settings.shape():
-                self.patches = recognizer.Patches.load(data.get("patches"))
+                self.patches = recognizer.Patches.load(data.get("patches"), data.get("drums"))
         if self.reading is None:
             self.ceiling = None
             self.read_at = None
@@ -351,6 +351,7 @@ class Meter:
             "shape": self.settings.shape(),
             "locked": self.locked,
             "patches": self.patches.dump(),
+            "drums": self.patches.drums(),
         }
 
     @callback

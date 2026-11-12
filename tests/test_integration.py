@@ -410,6 +410,9 @@ async def test_the_reading_survives_a_restart_and_removal_cleans_up(
     assert hass_storage[key]["data"]["reading"] == "1234.567"
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"
     assert hass.states.get("sensor.gas_meter_learnt_digits").state != "0"
+    drums = entry.runtime_data.patches.drums()
+    assert drums == hass_storage[key]["data"]["drums"]
+    assert any(drum is not None for kept in drums for drum in kept)
 
     assert hass.states.get("switch.gas_meter_lock_the_crop").state == "on"
     result = await _options(hass, entry, **{**CROP, "x": CROP["x"] + 1})

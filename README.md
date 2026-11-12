@@ -93,7 +93,9 @@ apart from the others and is left out of the crop.
    the last picture, and the lowest of the most likely ones is kept.
 5. The same choice labels new masks: once the meter can only show one digit
    on a drum, or only one value fits, what the drum shows is learnt as that
-   digit.
+   digit. The masks of a digit serve every drum, yet each drum keeps its
+   share of them: a drum standing still on a digit for days cannot push
+   out how the others, a red one say, show it.
 
 ## Installing
 

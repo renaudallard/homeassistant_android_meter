@@ -75,11 +75,60 @@ def test_shifts_never_wrap_a_row() -> None:
 
 def test_patches_survive_a_dump_and_refuse_junk() -> None:
     patches = _taught(random.Random(1), 12345678)
-    again = r.Patches.load(patches.dump())
+    again = r.Patches.load(patches.dump(), patches.drums())
     assert again.dump() == patches.dump()
+    assert again.drums() == patches.drums()
+    assert [d for kept in again.drums() for d in kept] == list(range(8))
+    # A store from before the drums were kept.
+    older = r.Patches.load(patches.dump())
+    assert older.dump() == patches.dump()
+    assert all(d is None for kept in older.drums() for d in kept)
     junk = r.Patches.load([["zz", 5, "", "f" * 200], {}, *[[] for _ in range(8)]])
     assert junk.counts() == [0] * 10
     assert r.Patches.load({"not": "a list"}).counts() == [0] * 10
+
+
+def test_drums_that_are_not_drum_numbers_come_from_none() -> None:
+    masks = [["1", "2", "3", "4"], ["5", "6"], *[[] for _ in range(8)]]
+    patches = r.Patches.load(masks, [["x", True, -1, 2], [1], *[[] for _ in range(8)]])
+    assert patches.dump() == masks
+    assert patches.drums()[:2] == [[None, None, None, 2], [None, None]]
+    assert r.Patches.load(masks, [[0, 1, 2, 3]]).drums()[0] == [None] * 4
+
+
+def test_a_drum_standing_still_leaves_the_others_their_masks() -> None:
+    """Drum 4 sat on 2 for days and kept adding 2s, where the red drum 6
+    shows its 2 apart from the black drums: drum 6 keeps the 2s it gave."""
+    patches = r.Patches()
+    for mask in (1, 2, 3):
+        patches.learn(2, mask, 6)
+    for mask in range(100, 140):
+        patches.learn(2, mask, 4)
+    kept = list(zip(patches.dump()[2], patches.drums()[2], strict=True))
+    assert len(kept) == r.PER_DIGIT
+    assert [text for text, drum in kept if drum == 6] == ["1", "2", "3"]
+    assert [text for text, drum in kept if drum == 4] == [
+        format(mask, "x") for mask in range(140 - r.PER_DIGIT + 3, 140)
+    ]
+
+
+def test_the_drum_holding_most_gives_up_its_oldest() -> None:
+    patches = r.Patches()
+    for mask in range(1, r.PER_DIGIT + 1):
+        patches.learn(5, mask, mask % 2)
+    patches.learn(5, 99, 7)
+    assert patches.dump()[5][0] == "2"
+    assert patches.drums()[5].count(7) == 1
+
+
+def test_masks_of_an_older_store_give_way_first() -> None:
+    older = [format(mask, "x") for mask in range(1, r.PER_DIGIT + 1)]
+    patches = r.Patches.load([older, *[[] for _ in range(9)]])
+    for mask in range(100, 110):
+        patches.learn(0, mask, 2)
+    drums = patches.drums()[0]
+    assert drums.count(None) == drums.count(2) == r.PER_DIGIT // 2
+    assert patches.dump()[0][-1] == format(109, "x")
 
 
 def test_open_frame_refuses_what_is_not_a_jpeg() -> None:
@@ -257,11 +306,11 @@ def test_a_real_meter_with_bars_under_its_digits() -> None:
     assert [cells[i].at_rest for i in (0, 3, 4, 5)] == [True] * 4
     assert not cells[6].at_rest
     patches = r.Patches()
-    patches.learn(1, cells[3].mask)
+    patches.learn(1, cells[3].mask, 3)
     dist = patches.distance(r._shifts(cells[4].mask), 1)
     assert dist is not None and dist <= r.MATCH
-    patches.learn(6, cells[0].mask)
-    patches.learn(8, cells[5].mask)
+    patches.learn(6, cells[0].mask, 0)
+    patches.learn(8, cells[5].mask, 5)
     for i, digit in ((0, 6), (5, 8)):
         nearest = min((patches.distance(r._shifts(cells[i].mask), d), d) for d in (1, 6, 8))
         assert nearest[1] == digit

@@ -67,17 +67,18 @@ def test_a_day_of_heating(seed: int) -> None:
         return cells
 
     patches = r.Patches()
-    wrong: list[tuple[int, set[int]]] = []
+    wrong: list[tuple[int, int]] = []
     learn = patches.learn
 
-    def checked(digit: int, mask: int) -> None:
+    def checked(digit: int, mask: int, drum: int) -> None:
         cells = truth["cells"]
         positions = truth["positions"]
         assert isinstance(cells, list) and isinstance(positions, list)
-        shown = {round(positions[i]) % 10 for i, cell in enumerate(cells) if cell.mask == mask}
-        if digit not in shown:
+        assert cells[drum].mask == mask
+        shown = round(positions[drum]) % 10
+        if digit != shown:
             wrong.append((digit, shown))
-        learn(digit, mask)
+        learn(digit, mask, drum)
 
     low = ceiling = _shown(volume)
     assert r.learn_reading(frame(volume), patches, low) > 0
