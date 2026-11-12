@@ -122,6 +122,30 @@ installs over the previous one.
 To build it yourself, run `./gradlew assembleRelease` in `android/` (JDK 21,
 Android SDK platform 37).
 
+### Versions
+
+Up to 0.1.13 the app and the integration were released under one version;
+since then the app gets a new version only when it changes.
+
+| Integration | App it ships with |
+|-------------|-------------------|
+| 0.1.0 to 0.1.13 | the same version |
+| 0.1.14 | 0.1.13 |
+
+Every app sends its pictures the same way and every integration answers
+the same way, so any pair reads the meter. What the phone does beyond
+that needs both sides at least at the version that brought it:
+
+| App \ Integration | 0.1.0 to 0.1.1 | 0.1.2 to 0.1.4 | 0.1.5 to 0.1.6 | 0.1.7 and later |
+|---|---|---|---|---|
+| 0.1.0 to 0.1.1 | reading | reading | reading | reading |
+| 0.1.2 to 0.1.4 | reading | + QR pairing | + QR pairing | + QR pairing |
+| 0.1.5 to 0.1.6 | reading | + QR pairing | + crop on the phone | + crop on the phone |
+| 0.1.7 and later | reading | + QR pairing | + crop on the phone | + Find the counter |
+
+Without QR pairing the webhook address is typed into the app; without the
+crop on the phone, the crop is set in Home Assistant.
+
 ## Setting up
 
 1. **Mount the phone** on the meter with the back camera over the counter,
