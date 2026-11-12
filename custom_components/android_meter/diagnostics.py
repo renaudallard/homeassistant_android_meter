@@ -51,6 +51,7 @@ async def async_get_config_entry_diagnostics(
         "frame_at": None if meter.frame_at is None else meter.frame_at.isoformat(),
         "frame_size": meter.frame_size,
         "masks_per_digit": meter.patches.counts(),
+        "mask_drums": meter.patches.drums(),
         "last_read": None
         if last is None
         else {

@@ -396,6 +396,8 @@ async def test_frame_image_and_diagnostics(
     assert entry.data["webhook_id"] not in str(diagnostics)
     assert diagnostics["reading"] == "1234.567"
     assert diagnostics["frame_size"] == list(LAYOUT.frame)
+    assert diagnostics["mask_drums"] == entry.runtime_data.patches.drums()
+    assert any(drum is not None for kept in diagnostics["mask_drums"] for drum in kept)
 
 
 async def test_the_reading_survives_a_restart_and_removal_cleans_up(

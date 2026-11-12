@@ -309,8 +309,8 @@ cost of the year and of the month.
 
 Download the integration's diagnostics (device page, three dots menu) and
 attach them with a Frame image. They hold the options, the status, the
-reading and how many masks each digit has, never the webhook address or the
-pictures.
+reading, how many masks each digit has and the drum each came from, never
+the webhook address or the pictures.
 
 ## Development
 
