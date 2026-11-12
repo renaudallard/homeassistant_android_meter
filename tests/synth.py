@@ -29,8 +29,9 @@ Each drum is a strip of the figures 0 to 9 and 0 again, seen through a
 window. The lowest drum turns with the volume; each higher one turns only
 while the drum below goes from 9 to 0, as an odometer does, so a frame
 taken mid-carry shows several drums between two figures. Integer drums are
-white on black with a bar under each digit, decimal ones white on red.
-Light, noise and the position of the counter in the frame vary per frame.
+white on black with a bar under each digit, decimal ones white on red,
+and on some meters printed off centre. Light, noise and the position of
+the counter in the frame vary per frame.
 """
 
 from __future__ import annotations
@@ -78,7 +79,7 @@ class Layout:
         }
 
 
-_STRIPS: dict[tuple[int, int, int, bool], Image.Image] = {}
+_STRIPS: dict[tuple[int, int, int, bool, int], Image.Image] = {}
 _NOISE: dict[tuple[int, int], list[Image.Image]] = {}
 
 
@@ -99,8 +100,9 @@ def _noise(size: tuple[int, int], rng: random.Random) -> Image.Image:
     return frame.transpose(Image.Transpose.ROTATE_180) if rng.random() < 0.5 else frame
 
 
-def _strip(background: tuple[int, int, int]) -> Image.Image:
-    strip = _STRIPS.get((*background, BARS))
+def _strip(background: tuple[int, int, int], skew: int = 0) -> Image.Image:
+    """A drum's figures, each skew pixels left of the window's centre."""
+    strip = _STRIPS.get((*background, BARS, skew))
     if strip is None:
         font = ImageFont.load_default(GLYPH)
         strip = Image.new("RGB", (WINDOW[0], PITCH * 12), background)
@@ -116,9 +118,13 @@ def _strip(background: tuple[int, int, int]) -> Image.Image:
                     (middle - 6, centre + 19, middle + 6, centre + 21), fill=(235, 235, 235)
                 )
             draw.text(
-                (WINDOW[0] // 2, centre), figure, fill=(235, 235, 235), font=font, anchor="mm"
+                (WINDOW[0] // 2 - skew, centre),
+                figure,
+                fill=(235, 235, 235),
+                font=font,
+                anchor="mm",
             )
-        _STRIPS[(*background, BARS)] = strip
+        _STRIPS[(*background, BARS, skew)] = strip
     return strip
 
 
@@ -140,12 +146,15 @@ def frame(
     light: float | None = None,
     jitter: int = 1,
     shade: int | None = None,
+    skew: int = 0,
 ) -> bytes:
     """A JPEG frame of the counter at volume.
 
     light scales the brightness, and shade turns the gradient across the
     frame; both are drawn at random when not given. A phone fixed to the
-    meter with its torch on keeps both steady.
+    meter with its torch on keeps both steady. skew moves the figures of
+    the red drums that many pixels left, as an Actaris prints them, so that
+    a red drum's digit looks unlike the same digit on a black drum.
     """
     width, height = layout.frame
     image = Image.new("RGB", (width, height), (110, 110, 105))
@@ -153,7 +162,7 @@ def frame(
     dy = rng.randint(-jitter, jitter)
     for i, position in enumerate(positions(volume, layout.digits)):
         red = i >= layout.digits - layout.decimals
-        strip = _strip((170, 25, 25) if red else (25, 25, 25))
+        strip = _strip((170, 25, 25), skew) if red else _strip((25, 25, 25))
         top = round(PITCH + position * PITCH + PITCH / 2 - WINDOW[1] / 2)
         window = strip.crop((0, top, WINDOW[0], top + WINDOW[1]))
         image.paste(window, (layout.x + dx + i * (WINDOW[0] + GAP), layout.y + dy))
