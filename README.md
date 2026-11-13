@@ -134,7 +134,7 @@ the app gets a new version only when it changes.
 | 0.1.0 to 0.1.1 | 0.1.0 to 0.1.1 |
 | 0.1.2 to 0.1.4 | 0.1.2 to 0.1.4 |
 | 0.1.5 to 0.1.6 | 0.1.5 to 0.1.6 |
-| 0.1.7 to 0.1.14 | 0.1.7 to 0.1.13 |
+| 0.1.7 to 0.1.15 | 0.1.7 to 0.1.13 |
 
 ## Setting up
 
