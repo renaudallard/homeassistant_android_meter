@@ -33,7 +33,7 @@ import struct
 from pathlib import Path
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from custom_components.android_meter import recognizer as r
 from tests import synth
@@ -224,6 +224,28 @@ def test_nothing_is_learnt_from_an_unteachable_frame() -> None:
     learnt = r.learn_reading(cells, patches, 1234567)
     assert learnt == sum(1 for cell in cells if cell.at_rest)
     assert not cells[-1].at_rest
+
+
+def _rings(*tops: int | None) -> list[r.Cell]:
+    """Windows 40 by 62 holding a ring from top down to 52, or nothing."""
+    strip = r.Geometry(0, 10, 10, len(tops) * 50 - 10, 62, len(tops), 10)
+    frame = Image.new("L", (len(tops) * 50 + 10, 82), 0)
+    draw = ImageDraw.Draw(frame)
+    for i, top in enumerate(tops):
+        if top is not None:
+            draw.ellipse((18 + i * 50, 10 + top, 42 + i * 50, 62), outline=255, width=4)
+    return r.cut(frame, strip)
+
+
+def test_a_short_digit_is_a_drum_turning() -> None:
+    """The window shows the loop of a 6 or a 9 turning past it, the rest
+    cut off: once stretched to a cell it would pass for a 0."""
+    cells = _rings(10, 10, 10, 26)
+    assert [cell.at_rest for cell in cells] == [True, True, True, False]
+    assert cells[3].mask is not None
+    # Too few drums at rest to tell what tall is.
+    cells = _rings(10, 26, None, None)
+    assert [cell.at_rest for cell in cells] == [True, True, False, False]
 
 
 # The last six drums only, as a phone too close to see the whole counter.

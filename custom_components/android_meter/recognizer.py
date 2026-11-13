@@ -47,6 +47,7 @@ import io
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
+from statistics import median
 
 from PIL import ExifTags, Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps, ImageStat
 
@@ -102,6 +103,13 @@ MIN_CONTRAST = 40
 
 # A digit whose ink spans at most this share of the window across is thin.
 NARROW = 0.45
+
+# The drums print one font, so a digit at rest stands as tall as the others
+# at rest in the frame, given at least SHORT_AMONG of them. One shorter than
+# SHORT of their median is part of a digit turning past the window, the
+# loop of a 6 or a 9 with the rest cut off, which a cell stretches into a 0.
+SHORT = 0.85
+SHORT_AMONG = 3
 
 PER_DIGIT = 16
 
@@ -325,8 +333,9 @@ def _flatten(work: Image.Image) -> Image.Image:
     return ImageOps.autocontrast(ImageChops.subtract(work, background), cutoff=1)
 
 
-def _cell(image: Image.Image) -> Cell:
-    """A window as a cell.
+def _cell(image: Image.Image) -> tuple[Cell, int]:
+    """A window as a cell, and the rows its digit spans in the window when
+    at rest, 0 otherwise.
 
     A window whose grey levels hardly spread once shrunk to a cell, which
     averages the sensor's noise away, is blank. Otherwise the grey levels
@@ -342,7 +351,7 @@ def _cell(image: Image.Image) -> Cell:
     """
     small = image.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR)
     if _spread(small.histogram()) < MIN_CONTRAST:
-        return Cell(None, False)
+        return Cell(None, False), 0
     width, height = CELL_W * 2, CELL_H * 2
     work = image.resize((width, height), Image.Resampling.BILINEAR)
     work = ImageOps.autocontrast(work, cutoff=2)
@@ -353,7 +362,7 @@ def _cell(image: Image.Image) -> Cell:
     digit = _stroke(_bits(work), width, height)
     rows = _rows(digit, width, height)
     if rows is None or rows[0] == 0 or rows[1] == height - 1:
-        return Cell(shown, False)
+        return Cell(shown, False), 0
     top, bottom = rows
     # The grey window with all but the digit's strokes, and a pixel around
     # them, blanked: shrinking grey keeps what a shrunk mask would lose.
@@ -375,18 +384,30 @@ def _cell(image: Image.Image) -> Cell:
     centred = Image.new("L", (width, height), 0)
     centred.paste(ink, (shift, 0))
     centred = centred.crop((0, max(0, top - 2), width, min(height, bottom + 3)))
-    return Cell(_bits(centred.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR)), True)
+    mask = _bits(centred.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR))
+    return Cell(mask, True), bottom - top + 1
 
 
 def cut(frame: Image.Image, geometry: Geometry) -> list[Cell]:
-    """Cut an upright frame into one cell per drum."""
+    """Cut an upright frame into one cell per drum.
+
+    A cell whose digit is short of the others at rest is a drum turning,
+    and is kept as one.
+    """
     if geometry.x + geometry.width > frame.width or geometry.y + geometry.height > frame.height:
         raise FrameError("crop outside the frame")
     if geometry.window < 4 or geometry.height < 8:
         raise FrameError("windows too small")
     counter = frame.crop(geometry.box)
-    return [
+    cells = [
         _cell(counter.crop((left, 0, right, geometry.height))) for left, right in geometry.cells()
+    ]
+    tall = [rows for cell, rows in cells if cell.at_rest]
+    if len(tall) < SHORT_AMONG:
+        return [cell for cell, _ in cells]
+    least = SHORT * median(tall)
+    return [
+        Cell(cell.mask, False) if cell.at_rest and rows < least else cell for cell, rows in cells
     ]
 
 

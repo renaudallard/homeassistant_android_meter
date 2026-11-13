@@ -71,7 +71,9 @@ apart from the others and is left out of the crop.
   is built for. Of the values that fit equally well, the lowest is taken, so
   a doubt delays the reading but never pushes it past the real one.
 - **Turning drums left out.** A drum caught between two digits, a blank one
-  or one unlike any known digit plays no part in the reading.
+  or one unlike any known digit plays no part in the reading. Nor does one
+  whose digit stands shorter than the others: the window shows only part of
+  a digit turning past it, the loop of a 6 say, which would pass for a 0.
 - **Wrong readings show up.** A picture whose drums show a value the meter
   cannot have reached, lower than the reading for instance, is refused and
   the status says so.
