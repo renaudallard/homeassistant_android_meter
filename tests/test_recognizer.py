@@ -248,6 +248,74 @@ def test_a_short_digit_is_a_drum_turning() -> None:
     assert [cell.at_rest for cell in cells] == [True, True, False, False]
 
 
+def test_the_last_drum_followed_names_a_digit_never_seen() -> None:
+    """Frames so close that the meter gains at most a unit between two."""
+    rng = random.Random(9)
+    patches = _taught(rng, 1234567)
+    trail = r.Trail()
+    trail.start(1234567, _cells(1234567, rng)[-1])
+    # The shape it showed: the meter stood.
+    assert trail.follow(_cells(1234567, rng)[-1], 1, 1234567, 1234572) == (1234567, 1234567)
+    # A new shape may be the next digit, and is once a second frame shows it.
+    assert trail.follow(_cells(1234568, rng)[-1], 1, 1234567, 1234572) == (1234567, 1234568)
+    cells = _cells(1234568, rng)
+    bounds = trail.follow(cells[-1], 1, 1234567, 1234572)
+    assert bounds == (1234568, 1234568)
+    assert not patches.known(8)
+    result = r.read(cells, patches, *bounds)
+    assert result.value == 1234568
+    assert patches.known(8)
+
+
+def test_the_trail_keeps_what_it_cannot_rule_out() -> None:
+    rng = random.Random(10)
+    first = _cells(1234567, rng)[-1]
+    turning = _cells(1234567.5, rng)[-1]
+    assert not turning.at_rest
+    wide = (1234567, 1234600)
+
+    # A frame of the drum turning before the new shape is the same step.
+    trail = r.Trail()
+    trail.start(1234567, first)
+    assert trail.follow(turning, 1, *wide) == (1234567, 1234568)
+    assert trail.follow(_cells(1234568, rng)[-1], 1, *wide) == (1234567, 1234569)
+    assert trail.follow(_cells(1234568, rng)[-1], 1, *wide) == (1234568, 1234568)
+
+    # Two of them may hide a digit.
+    trail.start(1234567, first)
+    trail.follow(turning, 1, *wide)
+    trail.follow(turning, 1, *wide)
+    trail.follow(_cells(1234569, rng)[-1], 1, *wide)
+    assert trail.follow(_cells(1234569, rng)[-1], 1, *wide) == (1234568, 1234569)
+
+    # Frames too far apart for one unit only widen.
+    trail.start(1234567, first)
+    assert trail.follow(first, 3, *wide) == (1234567, 1234570)
+
+    # The same shape after frames enough for a whole turn.
+    trail.start(1234567, first)
+    for _ in range(9):
+        trail.follow(turning, 1, *wide)
+    assert trail.follow(first, 1, *wide) == (1234567, 1234577)
+
+    # Drums at odds with the trail: it is dropped, and the frame read.
+    patches = _taught(rng, 1234567)
+    trail.start(1234568, first)
+    cells = _cells(1234567, rng)
+    assert r.read(cells, patches, 1234568, 1234568).refused == "implausible"
+    assert trail.read(cells, patches, 1, 1234567, 1234570).value == 1234567
+    assert trail.follow(first, 1, *wide) == (1234567, 1234567)
+
+    # A trail the readings have left behind, or one that lost count of the
+    # time, says nothing more.
+    trail.start(1234567, first)
+    assert trail.follow(first, 1, 1234580, 1234600) == (1234580, 1234600)
+    assert trail.follow(first, 1, 1234567, 1234600) == (1234567, 1234600)
+    trail.start(1234567, first)
+    assert trail.follow(first, None, *wide) == wide
+    assert trail.follow(first, 1, *wide) == wide
+
+
 # The last six drums only, as a phone too close to see the whole counter.
 TAIL = r.Geometry(
     0,

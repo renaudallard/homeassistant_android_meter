@@ -427,6 +427,11 @@ def _distance(a: int, b: int) -> float:
     return 100.0 * (1.0 - (a & b).bit_count() / either)
 
 
+def _apart(a: int, b: int) -> float:
+    """The distance from mask a, moved as it fits best, to b."""
+    return min(_distance(moved, b) for moved in _shifts(a))
+
+
 class Patches:
     """The masks learnt for each digit, shared by every drum.
 
@@ -647,6 +652,140 @@ def read(cells: Sequence[Cell], patches: Patches, low: int, high: int) -> Read:
             patches.learn(digit, cell.mask, i)
             learnt += 1
     return Read(value, near[-1], None, tuple(nearest), tuple(trusted), at_rest, learnt)
+
+
+# After this many frames the last drum can show the digit it showed before
+# without having stood still: it went all the way round.
+_TURN_FRAMES = 10
+
+# The masks kept of the digit the last drum shows: light and the play of
+# the mount change one frame's from the next, more than they do the nearest
+# of a few.
+_SHAPES = 4
+
+
+class Trail:
+    """Follows the last drum from frame to frame, to narrow where the
+    meter can stand.
+
+    It holds while the frames come so close that the meter can gain at
+    most one unit between two of them. Then a last drum showing the shape
+    it showed has not moved, and one showing a new shape went on to the
+    next digit, which is how a digit never seen gets a single value to be
+    learnt as. A shape counts as new only once two frames in a row show
+    it, far from the ones before: a digit half hidden by the edge of its
+    window passes for a drum at rest, and looks like no other.
+
+    The meter stands from low to low plus what cannot be ruled out: every
+    frame since the shape was last seen may have brought a unit, and what
+    was once in doubt stays so until a frame is read without any.
+    """
+
+    def __init__(self) -> None:
+        self._low: int | None = None
+        self._wide = 0
+        self._shape: list[int] = []
+        self._seen: int | None = None
+        self._frames = 0
+        self._turned = False
+
+    def start(self, value: int, cell: Cell) -> None:
+        """The meter stands at value, and cell is its last drum there."""
+        self._low = value
+        self._wide = 0
+        self._shape = []
+        self._settle(cell.mask if cell.at_rest else None)
+
+    def _settle(self, mask: int | None) -> None:
+        """The drum shows the shape still, as mask."""
+        if mask is not None:
+            self._shape = [*self._shape[1 - _SHAPES :], mask]
+        self._seen = None
+        self._frames = 0
+        self._turned = False
+
+    def _from_shape(self, mask: int) -> float:
+        return min(_apart(mask, kept) for kept in self._shape)
+
+    def follow(self, cell: Cell, step: int | None, low: int, high: int) -> tuple[int, int]:
+        """Take the last drum of a new frame, step being the units the
+        meter can have gained since the frame before, None when that is
+        not known. Returns low and high, narrowed where the drum allows."""
+        if self._low is None:
+            return low, high
+        if step is None:
+            self._low = None
+            return low, high
+        mask = cell.mask if cell.at_rest else None
+        if step > 1:
+            # Too far apart to tell: the drum is followed anew.
+            self._wide += step
+            self._shape = []
+            self._settle(None)
+            self._seen = mask
+        else:
+            self._frames += 1
+            if mask is None:
+                self._turned = self._turned or self._frames == 1
+                self._seen = None
+            elif not self._shape:
+                if self._seen is not None and _apart(mask, self._seen) <= MATCH:
+                    self._wide += self._frames
+                    self._shape = [self._seen]
+                    self._settle(mask)
+                else:
+                    self._seen = mask
+            elif self._from_shape(mask) <= MATCH:
+                if self._frames >= _TURN_FRAMES:
+                    self._wide += self._frames
+                self._settle(mask)
+            elif (
+                self._seen is not None
+                and _apart(mask, self._seen) <= MATCH
+                and self._from_shape(mask) > NOVEL
+                and self._from_shape(self._seen) > NOVEL
+            ):
+                # The frame before showed it first. One frame in between,
+                # the drum turning, is the same step; more may hide others.
+                self._low += 1
+                self._wide += max(1, self._frames - 1 - self._turned) - 1
+                self._shape = [self._seen]
+                self._settle(mask)
+            else:
+                self._seen = mask
+        top = self._low + self._wide + self._frames
+        if top < low or self._low > high:
+            # At odds with the readings: nothing to go by.
+            self._low = None
+            return low, high
+        return max(low, self._low), min(high, top)
+
+    def note(self, read: Read, cell: Cell) -> None:
+        """Take what the frame was read as. A value with no other as
+        likely, its last drum trusted, is where the meter stands."""
+        if read.value is None or read.value != read.ceiling or not read.trusted[-1]:
+            return
+        if self._low is None:
+            self.start(read.value, cell)
+        elif self._frames == 0:
+            self._low = read.value
+            self._wide = 0
+
+    def read(
+        self, cells: Sequence[Cell], patches: Patches, step: int | None, low: int, high: int
+    ) -> Read:
+        """Read cells from low to high, as narrowed by the last drum.
+
+        Drums plainly at odds with the narrower bounds say the trail went
+        wrong, a digit taken for the next under another light: it is
+        dropped, and the frame read without it."""
+        narrow = self.follow(cells[-1], step, low, high)
+        result = read(cells, patches, *narrow)
+        if result.refused == "implausible" and narrow != (low, high):
+            self._low = None
+            result = read(cells, patches, low, high)
+        self.note(result, cells[-1])
+        return result
 
 
 def render(data: bytes, geometry: Geometry | None, last: Read | None) -> bytes:

@@ -41,7 +41,7 @@ import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal, InvalidOperation
 from http import HTTPStatus
 from typing import Any
@@ -302,6 +302,9 @@ class Meter:
         self.frame_at: datetime | None = None
         self.frame_size: tuple[int, int] | None = None
         self.last: recognizer.Read | None = None
+        # The last drum from frame to frame, and when it was last looked at.
+        self.trail = recognizer.Trail()
+        self._trailed: datetime | None = None
         self._listeners: list[CALLBACK_TYPE] = []
         self._silence: CALLBACK_TYPE | None = None
         # When the phone last sent a frame, or when the meter started.
@@ -434,10 +437,15 @@ class Meter:
         if self.reading is None or self.ceiling is None or self.read_at is None:
             return None
         decimals = self.settings.decimals
-        seconds = max(0.0, (now - self.read_at).total_seconds())
-        run = math.ceil(self.settings.max_flow * seconds / 3600 * 10**decimals)
         low = _units(self.reading, decimals, ROUND_FLOOR)
+        run = self._gain(now - self.read_at)
         return low, _units(self.ceiling, decimals, ROUND_CEILING) + run + 1
+
+    def _gain(self, time: timedelta) -> int:
+        """The units of the last drum the meter can gain in that time."""
+        seconds = max(0.0, time.total_seconds())
+        units: int = 10**self.settings.decimals
+        return math.ceil(self.settings.max_flow * seconds / 3600 * units)
 
     def picture(self) -> tuple[bytes, datetime] | None:
         """The last frame and when it came, as a teaching screen shows it."""
@@ -454,8 +462,13 @@ class Meter:
         data: bytes,
         geometry: recognizer.Geometry | None,
         bounds: tuple[int, int] | None,
+        now: datetime,
     ) -> tuple[tuple[int, int] | None, str, recognizer.Read | None]:
-        """Read a frame. Runs in an executor, under the lock."""
+        """Read a frame. Runs in an executor, under the lock.
+
+        The trail narrows the bounds by the last drum. It has to see every
+        frame read: the units the meter can have gained are counted from
+        the last one it saw, so that one it missed only widens them."""
         rotation = 0 if geometry is None else geometry.rotation
         try:
             frame = recognizer.open_frame(data, rotation)
@@ -470,7 +483,9 @@ class Meter:
             return size, STATUS_BAD_CROP, None
         if bounds is None or not any(self.patches.counts()):
             return size, STATUS_UNTAUGHT, None
-        read = recognizer.read(cells, self.patches, *bounds)
+        step = None if self._trailed is None else self._gain(now - self._trailed)
+        self._trailed = now
+        read = self.trail.read(cells, self.patches, step, *bounds)
         return size, STATUS_OK if read.refused is None else read.refused, read
 
     async def async_frame(self, data: bytes) -> None:
@@ -481,7 +496,7 @@ class Meter:
             now = dt_util.utcnow()
             self._heard = now
             size, status, read = await self.hass.async_add_executor_job(
-                self._read, data, self.settings.geometry, self._bounds(now)
+                self._read, data, self.settings.geometry, self._bounds(now), now
             )
             if size is not None:
                 self.frame = data
@@ -502,14 +517,15 @@ class Meter:
 
     def _teach(
         self, data: bytes, geometry: recognizer.Geometry, value: int, into: recognizer.Patches
-    ) -> int:
-        """Learn a frame as value. Runs in an executor, under the lock."""
+    ) -> tuple[int, recognizer.Cell | None]:
+        """Learn a frame as value: how many drums were, and the last one.
+        Runs in an executor, under the lock."""
         try:
             frame = recognizer.open_frame(data, geometry.rotation)
             cells = recognizer.cut(frame, geometry)
         except recognizer.FrameError:
-            return -1
-        return recognizer.learn_reading(cells, into, value)
+            return -1, None
+        return recognizer.learn_reading(cells, into, value), cells[-1]
 
     async def async_configure(
         self,
@@ -553,13 +569,15 @@ class Meter:
         rescaled = settings.decimals != self.settings.decimals
         patches = recognizer.Patches() if fresh else self.patches
         taught: Decimal | None = None
+        value = 0
+        last: recognizer.Cell | None = None
         if reading is not None:
             if settings.geometry is None:
                 raise TeachError("no_crop")
             if picture is None:
                 raise TeachError("no_frame")
             value = _units(reading, settings.decimals, ROUND_FLOOR)
-            learnt = await self.hass.async_add_executor_job(
+            learnt, last = await self.hass.async_add_executor_job(
                 self._teach, picture[0], settings.geometry, value, patches
             )
             if learnt < 0:
@@ -571,6 +589,12 @@ class Meter:
         self.options = {**DEFAULTS, **options}
         self.settings = settings
         self.patches = patches
+        # The drum is followed from the frame taught, or not at all.
+        self.trail = recognizer.Trail()
+        self._trailed = None
+        if last is not None and picture is not None:
+            self.trail.start(value, last)
+            self._trailed = picture[1]
         # Only a frame ends the wait for the phone.
         silent = self.status in (STATUS_OFFLINE, STATUS_WAITING)
         if taught is not None and picture is not None:

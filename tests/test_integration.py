@@ -228,6 +228,24 @@ async def test_a_frame_is_read_once_taught(
     assert hass.states.get("sensor.gas_meter_reading").state == "1234.590"
 
 
+async def test_frames_close_together_teach_the_next_digit(
+    hass: HomeAssistant, hass_client_no_auth: Any, freezer: FrozenDateTimeFactory
+) -> None:
+    """The meter cannot gain two units in half a second: a last drum
+    showing a new shape twice has gone on by one."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    rng = random.Random(4)
+    await _post(client, entry, synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0))
+    await _options(hass, entry, **CROP, reading="1234.567")
+    assert hass.states.get("sensor.gas_meter_digits_to_learn").state == "8 9"
+    for _ in range(2):
+        freezer.tick(timedelta(seconds=0.5))
+        await _post(client, entry, synth.frame(1234568, LAYOUT, rng, light=0.9, shade=0))
+    assert hass.states.get("sensor.gas_meter_reading").state == "1234.568"
+    assert hass.states.get("sensor.gas_meter_digits_to_learn").state == "9"
+
+
 async def test_a_crop_of_the_last_drums(
     hass: HomeAssistant, hass_client_no_auth: Any, freezer: FrozenDateTimeFactory
 ) -> None:
