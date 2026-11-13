@@ -232,6 +232,11 @@ which the drums no longer show on the same scale: teach it again. **Lock the cro
 crop and counter controls, **Find the counter** and the phone's crop editor
 are refused. Turn it off to move the crop, then teach the reading again.
 
+The digits learnt by 0.1.14 or before are forgotten on updating: the masks
+are larger since, which lets a drum read a digit it only ever saw on
+another drum. The reading is kept, and Repairs asks for it to be taught
+once more.
+
 ## Settings
 
 On the meter's device page:

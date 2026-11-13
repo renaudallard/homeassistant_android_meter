@@ -320,7 +320,10 @@ class Meter:
             self.ceiling = _decimal(data.get("ceiling"))
             self.read_at = _time(data.get("read_at"))
             self.locked = data.get("locked") is True
-            if data.get("shape") == self.settings.shape():
+            # Masks cut to another size, as those of 0.1.14 and before, are
+            # of no use, and the reading has to be taught again.
+            cell = [recognizer.CELL_W, recognizer.CELL_H]
+            if data.get("shape") == self.settings.shape() and data.get("cell") == cell:
                 self.patches = recognizer.Patches.load(data.get("patches"), data.get("drums"))
         if self.reading is None:
             self.ceiling = None
@@ -349,6 +352,7 @@ class Meter:
             "ceiling": None if self.ceiling is None else str(self.ceiling),
             "read_at": None if self.read_at is None else self.read_at.isoformat(),
             "shape": self.settings.shape(),
+            "cell": [recognizer.CELL_W, recognizer.CELL_H],
             "locked": self.locked,
             "patches": self.patches.dump(),
             "drums": self.patches.drums(),

@@ -83,7 +83,8 @@ def test_patches_survive_a_dump_and_refuse_junk() -> None:
     older = r.Patches.load(patches.dump())
     assert older.dump() == patches.dump()
     assert all(d is None for kept in older.drums() for d in kept)
-    junk = r.Patches.load([["zz", 5, "", "f" * 200], {}, *[[] for _ in range(8)]])
+    long = "f" * (r.CELL_W * r.CELL_H // 4 + 1)
+    junk = r.Patches.load([["zz", 5, "", long], {}, *[[] for _ in range(8)]])
     assert junk.counts() == [0] * 10
     assert r.Patches.load({"not": "a list"}).counts() == [0] * 10
 

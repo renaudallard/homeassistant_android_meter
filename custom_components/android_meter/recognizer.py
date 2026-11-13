@@ -52,8 +52,8 @@ from PIL import ExifTags, Image, ImageChops, ImageDraw, ImageFilter, ImageFont, 
 
 # A mask is a Python int of CELL_W * CELL_H bits, the top left pixel
 # highest, row after row.
-CELL_W = 16
-CELL_H = 24
+CELL_W = 32
+CELL_H = 48
 _BITS = CELL_W * CELL_H
 _FULL = (1 << _BITS) - 1
 _FIRST_COLUMN = sum(1 << (_BITS - 1 - y * CELL_W) for y in range(CELL_H))
@@ -321,7 +321,7 @@ def _flatten(work: Image.Image) -> Image.Image:
     """The window less its own background, so that a reflection's glow
     across it does not split a digit at the threshold. The background is
     the window with its strokes worn away."""
-    background = work.filter(ImageFilter.MinFilter(7)).filter(ImageFilter.GaussianBlur(3))
+    background = work.filter(ImageFilter.MinFilter(13)).filter(ImageFilter.GaussianBlur(6))
     return ImageOps.autocontrast(ImageChops.subtract(work, background), cutoff=1)
 
 
@@ -348,7 +348,7 @@ def _cell(image: Image.Image) -> Cell:
     work = ImageOps.autocontrast(work, cutoff=2)
     if ImageStat.Stat(work).median[0] > 127:
         work = ImageOps.invert(work)
-    work = _flatten(work).filter(ImageFilter.GaussianBlur(0.7))
+    work = _flatten(work).filter(ImageFilter.GaussianBlur(1.4))
     shown = _bits(work.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR))
     digit = _stroke(_bits(work), width, height)
     rows = _rows(digit, width, height)
@@ -358,7 +358,7 @@ def _cell(image: Image.Image) -> Cell:
     # The grey window with all but the digit's strokes, and a pixel around
     # them, blanked: shrinking grey keeps what a shrunk mask would lose.
     keep = Image.frombytes("1", (width, height), digit.to_bytes(width * height // 8, "big"))
-    keep = keep.convert("L").filter(ImageFilter.MaxFilter(3))
+    keep = keep.convert("L").filter(ImageFilter.MaxFilter(5))
     ink = ImageChops.multiply(work, keep)
     # A thin digit, a 1, is centred across on its ink: windows are cut by
     # estimate, and a 1 two pixels off matches nothing. A wide one keeps its
@@ -374,7 +374,7 @@ def _cell(image: Image.Image) -> Cell:
         shift = round((width - 1) / 2 - centre)
     centred = Image.new("L", (width, height), 0)
     centred.paste(ink, (shift, 0))
-    centred = centred.crop((0, max(0, top - 1), width, min(height, bottom + 2)))
+    centred = centred.crop((0, max(0, top - 2), width, min(height, bottom + 3)))
     return Cell(_bits(centred.resize((CELL_W, CELL_H), Image.Resampling.BILINEAR)), True)
 
 

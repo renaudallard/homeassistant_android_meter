@@ -56,6 +56,7 @@ from pytest_homeassistant.components.repairs import (
     start_repair_fix_flow,
 )
 
+from custom_components.android_meter import recognizer as r
 from custom_components.android_meter.const import DOMAIN
 from tests import synth
 
@@ -431,6 +432,26 @@ async def test_the_reading_survives_a_restart_and_removal_cleans_up(
     assert await hass.config_entries.async_remove(entry.entry_id)
     await hass.async_block_till_done()
     assert key not in hass_storage
+
+
+async def test_masks_of_another_size_are_dropped(
+    hass: HomeAssistant, hass_client_no_auth: Any, hass_storage: dict[str, Any]
+) -> None:
+    """A store written before the masks grew: the reading stays, and has
+    to be taught again."""
+    entry = await _entry(hass)
+    await _post(await hass_client_no_auth(), entry, synth.frame(1234567, LAYOUT, random.Random(5)))
+    await _options(hass, entry, **CROP, reading="1234.567")
+    assert hass.states.get("sensor.gas_meter_learnt_digits").state != "0"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    data = hass_storage[f"{DOMAIN}.{entry.entry_id}"]["data"]
+    assert data["cell"] == [r.CELL_W, r.CELL_H]
+    del data["cell"]
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.gas_meter_reading").state == "1234.567"
+    assert hass.states.get("sensor.gas_meter_learnt_digits").state == "0"
 
 
 async def test_pairing_code(hass: HomeAssistant) -> None:
