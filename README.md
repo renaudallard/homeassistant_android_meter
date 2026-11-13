@@ -228,6 +228,19 @@ reading taught got all ten digits learnt after 5 to 30 hours, once 1 to
 the reading again when a drum shows one of the **Digits to learn** learns
 it at once.
 
+It goes much faster when pictures come so close that the last drum cannot
+gain two units between two of them: a new shape on it is then the next
+digit, and is learnt as such. With pictures 12 s apart, the 10 s interval
+and the time the phone takes, that holds while the **largest flow** times
+12 s is at most one unit of the last drum: 3 m³/h for a last drum counting
+0.01 m³, 0.3 for one counting 0.001. While digits are still to learn and
+it holds, the phone is asked for a picture every 10 s whatever the
+interval set, and the interval set comes back with the tenth digit. On a
+real G4 with pictures 15 s apart and the largest flow set to 2 m³/h, one
+reading taught got all ten digits 23 minutes after the gas came on. The largest flow is a promise
+though: gas flowing faster than it says gets readings refused, and could
+get a digit learnt as the one before it.
+
 A change of crop forgets the digits learnt, since they no longer match the
 windows. A change of **Decimal drums** keeps them but drops the reading,
 which the drums no longer show on the same scale: teach it again. **Lock the crop** keeps a slip from doing that: while it is on, the
@@ -259,7 +272,7 @@ In Configure, a menu of two screens:
 | Screen | Options |
 |---|---|
 | Teach the reading | The meter's reading, with the last picture; Forget the digits learnt. |
-| Phone and pairing | The pairing QR code; interval (10 to 3600 s, 60 by default); torch; largest flow (6 m³/h for a G4, 10 for a G6). |
+| Phone and pairing | The pairing QR code; interval (10 to 3600 s, 60 by default); torch; largest flow (6 m³/h for a G4, 10 for a G6, or what your appliances draw together if that is less). |
 
 ## What you get
 

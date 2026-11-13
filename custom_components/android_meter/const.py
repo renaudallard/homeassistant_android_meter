@@ -69,6 +69,8 @@ DEFAULTS: Final[dict[str, int | float | bool]] = {
 
 ROTATIONS: Final = (0, 90, 180, 270)
 MIN_INTERVAL: Final = 10
+# What a phone adds to the interval between two pictures, taking one.
+PHONE_SECONDS: Final = 2
 MAX_INTERVAL: Final = 3600
 MAX_DIGITS: Final = 12
 MAX_DECIMALS: Final = 6

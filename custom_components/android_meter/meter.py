@@ -73,6 +73,8 @@ from .const import (
     MAX_DIGITS,
     MAX_FRAME_BYTES,
     MAX_MESSAGE_BYTES,
+    MIN_INTERVAL,
+    PHONE_SECONDS,
     ROTATIONS,
     SILENCE_FLOOR,
     SILENCE_INTERVALS,
@@ -447,6 +449,22 @@ class Meter:
         units: int = 10**self.settings.decimals
         return math.ceil(self.settings.max_flow * seconds / 3600 * units)
 
+    def interval(self) -> int:
+        """The interval asked of the phone: the shortest one while a digit
+        is still to learn, when pictures that close let the last drum be
+        followed, the meter gaining a unit at most between two."""
+        wanted = self.settings.interval
+        apart = timedelta(seconds=MIN_INTERVAL + PHONE_SECONDS)
+        if (
+            wanted > MIN_INTERVAL
+            and self.reading is not None
+            and self.settings.geometry is not None
+            and not all(self.patches.counts())
+            and self._gain(apart) <= 1
+        ):
+            return MIN_INTERVAL
+        return wanted
+
     def picture(self) -> tuple[bytes, datetime] | None:
         """The last frame and when it came, as a teaching screen shows it."""
         if self.frame is None or self.frame_at is None:
@@ -727,7 +745,7 @@ class Meter:
             self._receiving = False
         return web.json_response(
             {
-                "interval": self.settings.interval,
+                "interval": self.interval(),
                 "torch": self.settings.torch,
                 "status": self.status,
                 "crop": self.crop(),

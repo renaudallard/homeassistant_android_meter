@@ -246,6 +246,39 @@ async def test_frames_close_together_teach_the_next_digit(
     assert hass.states.get("sensor.gas_meter_digits_to_learn").state == "9"
 
 
+async def test_pictures_come_faster_while_digits_are_to_learn(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """With one decimal drum the meter gains less than a unit in the time
+    of the shortest interval, and the last drum can be followed."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    rng = random.Random(6)
+    crop = {**CROP, "decimals": 1}
+    await _post(client, entry, synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0))
+    await _options(hass, entry, **crop, reading="123456.7")
+    response = await _post(client, entry, synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0))
+    assert (await response.json())["interval"] == 10
+    await _post(client, entry, synth.frame(89012345, LAYOUT, rng, light=0.9, shade=0))
+    await _options(hass, entry, **crop, reading="8901234.5")
+    assert hass.states.get("sensor.gas_meter_digits_to_learn").state == "none"
+    response = await _post(client, entry, synth.frame(89012345, LAYOUT, rng, light=0.9, shade=0))
+    assert (await response.json())["interval"] == 60
+
+
+async def test_three_decimal_drums_turn_too_fast_to_follow(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    rng = random.Random(6)
+    await _post(client, entry, synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0))
+    await _options(hass, entry, **CROP, reading="1234.567")
+    assert hass.states.get("sensor.gas_meter_digits_to_learn").state != "none"
+    response = await _post(client, entry, synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0))
+    assert (await response.json())["interval"] == 60
+
+
 async def test_a_crop_of_the_last_drums(
     hass: HomeAssistant, hass_client_no_auth: Any, freezer: FrozenDateTimeFactory
 ) -> None:

@@ -52,9 +52,9 @@
         },
         "data_description": {
           "qr_code": "Scan with the phone's camera app, then share the text to Android Meter. It holds this Home Assistant's address.",
-          "interval": "How long the phone waits between two pictures.",
+          "interval": "How long the phone waits between two pictures. While digits are still to learn it may be asked for 10 s instead.",
           "torch": "Light the meter for each picture.",
-          "max_flow": "The most the meter can pass. 6 m³/h for a G4 meter, 10 for a G6. Readings that would need more are refused."
+          "max_flow": "The most that can flow: 6 m³/h for a G4 meter, 10 for a G6, or what your appliances draw together if that is less. Readings that would need more are refused."
         }
       }
     },
