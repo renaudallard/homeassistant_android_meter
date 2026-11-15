@@ -71,6 +71,13 @@ ROTATIONS: Final = (0, 90, 180, 270)
 MIN_INTERVAL: Final = 10
 # What a phone adds to the interval between two pictures, taking one.
 PHONE_SECONDS: Final = 2
+# A phone that keeps its camera and torch on between pictures takes one
+# in about 0.4 s and has its answer 0.2 s later: the shortest interval
+# asked of it, and what it adds to it, with a margin.
+MIN_HELD_INTERVAL: Final = 2
+HELD_SECONDS: Final = 1
+# Sent with a frame by a phone able to keep its camera on.
+HOLD_HEADER: Final = "X-Can-Hold"
 MAX_INTERVAL: Final = 3600
 MAX_DIGITS: Final = 12
 MAX_DECIMALS: Final = 6

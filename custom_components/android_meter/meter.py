@@ -69,10 +69,13 @@ from .const import (
     DEFAULT_NAME,
     DEFAULTS,
     DOMAIN,
+    HELD_SECONDS,
+    HOLD_HEADER,
     MAX_DECIMALS,
     MAX_DIGITS,
     MAX_FRAME_BYTES,
     MAX_MESSAGE_BYTES,
+    MIN_HELD_INTERVAL,
     MIN_INTERVAL,
     PHONE_SECONDS,
     ROTATIONS,
@@ -315,6 +318,8 @@ class Meter:
         self._closed = False
         # A frame is being received or read: the phone sends one at a time.
         self._receiving = False
+        # The phone said with its last frame it can keep its camera on.
+        self.can_hold = False
         # Each Find decodes the whole picture: one at a time.
         self._finding = asyncio.Lock()
 
@@ -449,21 +454,24 @@ class Meter:
         units: int = 10**self.settings.decimals
         return math.ceil(self.settings.max_flow * seconds / 3600 * units)
 
-    def interval(self) -> int:
-        """The interval asked of the phone: the shortest one while a digit
-        is still to learn, when pictures that close let the last drum be
-        followed, the meter gaining a unit at most between two."""
+    def pace(self) -> tuple[int, bool]:
+        """The interval asked of the phone, and whether it keeps its camera
+        and torch on until the next picture.
+
+        While a digit is still to learn, pictures close enough for the
+        meter to gain a unit at most between two let the last drum be
+        followed: the shortest interval when it is close enough, or else
+        a shorter one, from a phone that can keep its camera on."""
         wanted = self.settings.interval
-        apart = timedelta(seconds=MIN_INTERVAL + PHONE_SECONDS)
-        if (
-            wanted > MIN_INTERVAL
-            and self.reading is not None
-            and self.settings.geometry is not None
-            and not all(self.patches.counts())
-            and self._gain(apart) <= 1
-        ):
-            return MIN_INTERVAL
-        return wanted
+        if self.reading is None or self.settings.geometry is None or all(self.patches.counts()):
+            return wanted, False
+        if self._gain(timedelta(seconds=MIN_INTERVAL + PHONE_SECONDS)) <= 1:
+            return MIN_INTERVAL, False
+        if self.can_hold:
+            for seconds in range(MIN_INTERVAL - 1, MIN_HELD_INTERVAL - 1, -1):
+                if self._gain(timedelta(seconds=seconds + HELD_SECONDS)) <= 1:
+                    return seconds, True
+        return wanted, False
 
     def picture(self) -> tuple[bytes, datetime] | None:
         """The last frame and when it came, as a teaching screen shows it."""
@@ -734,6 +742,7 @@ class Meter:
         if self._receiving:
             return web.Response(status=HTTPStatus.SERVICE_UNAVAILABLE)
         self._receiving = True
+        self.can_hold = request.headers.get(HOLD_HEADER) == "1"
         try:
             data = await _read(request, MAX_FRAME_BYTES)
             if data is None:
@@ -743,9 +752,11 @@ class Meter:
             await self.async_frame(data)
         finally:
             self._receiving = False
+        interval, hold = self.pace()
         return web.json_response(
             {
-                "interval": self.interval(),
+                "interval": interval,
+                "hold": hold,
                 "torch": self.settings.torch,
                 "status": self.status,
                 "crop": self.crop(),

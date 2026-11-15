@@ -108,10 +108,13 @@ def _qr(result: Any) -> str | None:
     return None
 
 
-async def _post(client: Any, entry: Any, data: bytes, kind: str = "image/jpeg") -> Any:
-    return await client.post(
-        f"/api/webhook/{entry.data['webhook_id']}", data=data, headers={"Content-Type": kind}
-    )
+async def _post(
+    client: Any, entry: Any, data: bytes, kind: str = "image/jpeg", hold: bool = False
+) -> Any:
+    headers = {"Content-Type": kind}
+    if hold:
+        headers["X-Can-Hold"] = "1"
+    return await client.post(f"/api/webhook/{entry.data['webhook_id']}", data=data, headers=headers)
 
 
 async def _open(hass: HomeAssistant, entry: Any, step: str) -> dict[str, Any]:
@@ -194,6 +197,7 @@ async def test_a_frame_is_read_once_taught(
     assert response.status == HTTPStatus.OK
     reply = await response.json()
     assert reply["interval"] == 60
+    assert reply["hold"] is False
     assert reply["torch"] is True
     assert reply["status"] == "no_crop"
     assert reply["crop"]["width"] == 0
@@ -266,6 +270,32 @@ async def test_pictures_come_faster_while_digits_are_to_learn(
     assert (await response.json())["interval"] == 60
 
 
+async def test_a_phone_keeping_its_camera_on_is_asked_for_closer_pictures(
+    hass: HomeAssistant, hass_client_no_auth: Any
+) -> None:
+    """With two decimal drums and the largest flow at 6 m3/h, pictures
+    10 s apart are too far apart to follow the last drum, 5 s apart from
+    a phone that holds its camera on are not. Only a phone that says it
+    can is asked to, and only while digits are to learn."""
+    entry = await _entry(hass)
+    client = await hass_client_no_auth()
+    rng = random.Random(6)
+    crop = {**CROP, "decimals": 2}
+    await _post(client, entry, synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0))
+    await _options(hass, entry, **crop, reading="12345.67")
+    frame = synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0)
+    reply = await (await _post(client, entry, frame)).json()
+    assert (reply["interval"], reply["hold"]) == (60, False)
+    reply = await (await _post(client, entry, frame, hold=True)).json()
+    assert (reply["interval"], reply["hold"]) == (5, True)
+    await _post(client, entry, synth.frame(89012345, LAYOUT, rng, light=0.9, shade=0))
+    await _options(hass, entry, **crop, reading="890123.45")
+    assert hass.states.get("sensor.gas_meter_digits_to_learn").state == "none"
+    frame = synth.frame(89012345, LAYOUT, rng, light=0.9, shade=0)
+    reply = await (await _post(client, entry, frame, hold=True)).json()
+    assert (reply["interval"], reply["hold"]) == (60, False)
+
+
 async def test_three_decimal_drums_turn_too_fast_to_follow(
     hass: HomeAssistant, hass_client_no_auth: Any
 ) -> None:
@@ -275,7 +305,8 @@ async def test_three_decimal_drums_turn_too_fast_to_follow(
     await _post(client, entry, synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0))
     await _options(hass, entry, **CROP, reading="1234.567")
     assert hass.states.get("sensor.gas_meter_digits_to_learn").state != "none"
-    response = await _post(client, entry, synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0))
+    frame = synth.frame(1234567, LAYOUT, rng, light=0.9, shade=0)
+    response = await _post(client, entry, frame, hold=True)
     assert (await response.json())["interval"] == 60
 
 
@@ -448,6 +479,8 @@ async def test_frame_image_and_diagnostics(
     assert entry.data["webhook_id"] not in str(diagnostics)
     assert diagnostics["reading"] == "1234.567"
     assert diagnostics["frame_size"] == list(LAYOUT.frame)
+    assert diagnostics["can_hold"] is False
+    assert diagnostics["pace"] == [60, False]
     assert diagnostics["mask_drums"] == entry.runtime_data.patches.drums()
     assert any(drum is not None for kept in diagnostics["mask_drums"] for drum in kept)
 

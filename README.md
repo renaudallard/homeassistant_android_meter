@@ -237,9 +237,23 @@ and the time the phone takes, that holds while the **largest flow** times
 it holds, the phone is asked for a picture every 10 s whatever the
 interval set, and the interval set comes back with the tenth digit. On a
 real G4 with pictures 15 s apart and the largest flow set to 2 m³/h, one
-reading taught got all ten digits 23 minutes after the gas came on. The largest flow is a promise
-though: gas flowing faster than it says gets readings refused, and could
-get a digit learnt as the one before it.
+reading taught got all ten digits 23 minutes after the gas came on.
+
+With a higher largest flow the app keeps the camera and the torch on
+between pictures instead, while digits are to learn, and takes each in
+about 0.4 s rather than 1.5. The phone is then asked for a picture as
+often as the largest flow needs, every 2 to 9 s, counting a second for the
+picture and the answer: every 5 s at 6 m³/h with a last drum counting
+0.01 m³. The app keeps the camera on only while asked to, and from
+Android 10 stops once Android reports the phone warming up. The skin of a
+Motorola edge 20 doing this went from 23 to 29 °C in a quarter of an hour.
+In simulation at 6 m³/h with pictures 5.6 s apart, one reading taught got
+all ten digits after 10 minutes to 4.5 hours in 16 runs out of 16, against
+2 runs out of 16 in 8 hours with pictures a minute apart. A last drum
+counting 0.001 m³ turns too fast even so, a unit every 0.6 s at 6 m³/h.
+
+The largest flow is a promise though: gas flowing faster than it says gets
+readings refused, and could get a digit learnt as the one before it.
 
 A change of crop forgets the digits learnt, since they no longer match the
 windows. A change of **Decimal drums** keeps them but drops the reading,

@@ -50,6 +50,8 @@ async def async_get_config_entry_diagnostics(
         "read_at": None if meter.read_at is None else meter.read_at.isoformat(),
         "frame_at": None if meter.frame_at is None else meter.frame_at.isoformat(),
         "frame_size": meter.frame_size,
+        "can_hold": meter.can_hold,
+        "pace": meter.pace(),
         "masks_per_digit": meter.patches.counts(),
         "mask_drums": meter.patches.drums(),
         "last_read": None
