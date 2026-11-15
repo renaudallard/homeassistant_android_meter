@@ -37,11 +37,16 @@ import java.net.URL
 
 const val MIN_INTERVAL = 10
 const val MAX_INTERVAL = 3600
+/* The shortest interval with the camera kept on between pictures. */
+const val MIN_HELD_INTERVAL = 2
 
 private const val MAX_REPLY = 64 * 1024
 
-/** What Home Assistant answers a frame with; crop is the crop in force, as sent. */
-data class Reply(val interval: Int, val torch: Boolean, val status: String, val crop: String?)
+/**
+ * What Home Assistant answers a frame with; hold asks to keep the camera
+ * and torch on until the next picture, crop is the crop in force, as sent.
+ */
+data class Reply(val interval: Int, val hold: Boolean, val torch: Boolean, val status: String, val crop: String?)
 
 fun validUrl(url: String): Boolean =
     url.startsWith("http://") || url.startsWith("https://")
@@ -65,11 +70,12 @@ fun pairingAddress(text: String): String? {
 }
 
 /**
- * Posts a JPEG to the webhook and reads the answer. Blocks, so it never
- * runs on the main thread. Redirects are not followed: the address holds
- * the webhook's secret and must not be handed to another host.
+ * Posts a JPEG to the webhook and reads the answer, saying whether the
+ * phone can keep its camera on. Blocks, so it never runs on the main
+ * thread. Redirects are not followed: the address holds the webhook's
+ * secret and must not be handed to another host.
  */
-fun upload(url: String, jpeg: ByteArray): Reply {
+fun upload(url: String, jpeg: ByteArray, canHold: Boolean): Reply {
     val connection = URL(url).openConnection() as HttpURLConnection
     try {
         connection.requestMethod = "POST"
@@ -79,6 +85,7 @@ fun upload(url: String, jpeg: ByteArray): Reply {
         connection.doOutput = true
         connection.setFixedLengthStreamingMode(jpeg.size)
         connection.setRequestProperty("Content-Type", "image/jpeg")
+        if (canHold) connection.setRequestProperty("X-Can-Hold", "1")
         connection.outputStream.use { it.write(jpeg) }
         val code = connection.responseCode
         if (code != HttpURLConnection.HTTP_OK) throw IOException("HTTP $code")
@@ -148,10 +155,11 @@ private fun json(body: String): JSONObject = try {
 fun parse(body: String): Reply {
     try {
         val json = json(body)
-        val interval = json.getInt("interval").coerceIn(MIN_INTERVAL, MAX_INTERVAL)
+        val hold = json.optBoolean("hold", false)
+        val interval = json.getInt("interval").coerceIn(if (hold) MIN_HELD_INTERVAL else MIN_INTERVAL, MAX_INTERVAL)
         val status = json.optString("status", "?").take(32)
         val crop = json.optJSONObject("crop")?.toString()
-        return Reply(interval, json.getBoolean("torch"), status, crop)
+        return Reply(interval, hold, json.getBoolean("torch"), status, crop)
     } catch (e: JSONException) {
         throw IOException("unexpected answer")
     }

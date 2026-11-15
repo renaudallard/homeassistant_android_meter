@@ -391,7 +391,7 @@ class MainActivity : Activity() {
         }
         val handler = Handler(t.looper)
         handler.post {
-            single = shootAndSend(this, handler, true, { true }) { Status.shooting(false) }
+            single = shootAndSend(this, handler, true, { true }, null) { _, _ -> Status.shooting(false) }
         }
     }
 

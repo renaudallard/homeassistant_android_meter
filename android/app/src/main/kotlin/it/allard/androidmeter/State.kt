@@ -53,6 +53,11 @@ class Settings(context: Context) {
         get() = prefs.getInt("interval", 60)
         set(value) = prefs.edit().putInt("interval", value).apply()
 
+    /* Whether it last asked to keep the camera on until the next picture. */
+    var hold: Boolean
+        get() = prefs.getBoolean("hold", false)
+        set(value) = prefs.edit().putBoolean("hold", value).apply()
+
     var torch: Boolean
         get() = prefs.getBoolean("torch", true)
         set(value) = prefs.edit().putBoolean("torch", value).apply()

@@ -100,37 +100,60 @@ private fun single(chars: CameraCharacteristics): Boolean {
 }
 
 /**
- * Takes one picture: opens the camera, lights the torch if asked, lets
- * exposure and focus settle on a throwaway preview, takes a JPEG and
- * closes everything again. done runs once, on the handler's thread.
+ * Takes pictures with one camera: opens it, lights the torch if asked,
+ * lets exposure and focus settle on a throwaway preview and takes a JPEG.
+ * The camera closes after it, or stays open with the torch lit when the
+ * picture is to be kept for the next one, which is then taken at once.
+ * Everything runs on the handler's thread.
  */
 class Shot(
     context: Context,
-    private val cameraId: String,
-    private val torch: Boolean,
+    val cameraId: String,
+    val torch: Boolean,
     private val handler: Handler,
-    private val done: (Result<ByteArray>) -> Unit,
 ) {
     private val manager = context.getSystemService(CameraManager::class.java)
     private val executor = Executor { handler.post(it) }
+    private var chars: CameraCharacteristics? = null
     private var device: CameraDevice? = null
     private var session: CameraCaptureSession? = null
     private var reader: ImageReader? = null
     private var texture: SurfaceTexture? = null
     private var preview: Surface? = null
-    private var orientation = 0
     private var frames = 0
-    private var taken = false
-    private var finished = false
-    private val timeout = Runnable { finish(Result.failure(IOException("timed out"))) }
+    private var opening = false
+    private var settled = false
+    private var keep = false
+    private var done: ((Result<ByteArray>) -> Unit)? = null
+    private val timeout = Runnable { fail(IOException("timed out")) }
+
+    /* Closed for good: a new Shot takes the next picture. */
+    var closed = false
+        private set
+
+    /**
+     * Takes a picture and calls done once with it, leaving the camera and
+     * the torch on afterwards if keep. One picture at a time. A failure
+     * closes the camera, as does a picture not kept.
+     */
+    fun take(keep: Boolean, done: (Result<ByteArray>) -> Unit) {
+        if (closed || this.done != null) {
+            done(Result.failure(IOException(if (closed) "camera closed" else "camera busy")))
+            return
+        }
+        this.keep = keep
+        this.done = done
+        handler.postDelayed(timeout, TIMEOUT_MS)
+        if (settled) still() else if (!opening) open()
+    }
 
     @SuppressLint("MissingPermission")
-    fun start() {
-        handler.postDelayed(timeout, TIMEOUT_MS)
+    private fun open() {
+        opening = true
         try {
             val chars = manager.getCameraCharacteristics(cameraId)
+            this.chars = chars
             val size = jpegSize(chars)
-            orientation = jpegOrientation(chars)
             val reader = ImageReader.newInstance(size.width, size.height, ImageFormat.JPEG, 1)
             this.reader = reader
             reader.setOnImageAvailableListener({ r ->
@@ -139,7 +162,7 @@ class Shot(
                     val buffer = it.planes[0].buffer
                     ByteArray(buffer.remaining()).also { out -> buffer.get(out) }
                 }
-                finish(Result.success(bytes))
+                deliver(Result.success(bytes))
             }, handler)
             val texture = SurfaceTexture(false)
             texture.setDefaultBufferSize(640, 480)
@@ -147,7 +170,7 @@ class Shot(
             preview = Surface(texture)
             manager.openCamera(cameraId, executor, opened)
         } catch (e: Exception) {
-            finish(Result.failure(e))
+            fail(e)
         }
     }
 
@@ -185,11 +208,11 @@ class Shot(
 
     private val opened = object : CameraDevice.StateCallback() {
         override fun onOpened(camera: CameraDevice) {
-            device = camera
-            if (finished) {
+            if (closed) {
                 camera.close()
                 return
             }
+            device = camera
             try {
                 val outputs = listOf(
                     OutputConfiguration(preview!!),
@@ -199,7 +222,7 @@ class Shot(
                     SessionConfiguration(SessionConfiguration.SESSION_REGULAR, outputs, executor, configured)
                 )
             } catch (e: Exception) {
-                finish(Result.failure(e))
+                fail(e)
             }
         }
 
@@ -213,29 +236,29 @@ class Shot(
     }
 
     /*
-     * The camera went away, maybe before it ever opened. It is closed all
-     * the same, as the documentation asks; finish only closes the one it
-     * was handed.
+     * The camera went away, maybe before it ever opened, or while kept for
+     * the next picture. It is closed all the same, as the documentation
+     * asks; release only closes the one it was handed.
      */
     private fun lost(camera: CameraDevice, error: IOException) {
         if (device !== camera) camera.close()
-        finish(Result.failure(error))
+        fail(error)
     }
 
     private val configured = object : CameraCaptureSession.StateCallback() {
         override fun onConfigured(s: CameraCaptureSession) {
             session = s
-            if (finished) return
+            if (closed) return
             try {
                 val request = request(CameraDevice.TEMPLATE_PREVIEW, preview!!)
                 s.setRepeatingRequest(request.build(), settling, handler)
             } catch (e: Exception) {
-                finish(Result.failure(e))
+                fail(e)
             }
         }
 
         override fun onConfigureFailed(s: CameraCaptureSession) {
-            finish(Result.failure(IOException("capture session refused")))
+            fail(IOException("capture session refused"))
         }
     }
 
@@ -252,26 +275,33 @@ class Shot(
         return builder
     }
 
-    /* Waits for exposure and focus, then asks for the picture once. */
+    /*
+     * Waits for exposure and focus once, then takes the first picture. The
+     * preview goes on while the camera is kept, and keeps them settled.
+     */
     private val settling = object : CameraCaptureSession.CaptureCallback() {
         override fun onCaptureCompleted(
             s: CameraCaptureSession,
             request: CaptureRequest,
             result: TotalCaptureResult,
         ) {
-            if (taken || finished) return
+            if (settled || closed) return
             frames++
             if (frames < MIN_FRAMES) return
             if (frames < MAX_FRAMES && !(exposed(result) && focused(result))) return
-            taken = true
-            try {
-                val still = request(CameraDevice.TEMPLATE_STILL_CAPTURE, reader!!.surface)
-                still.set(CaptureRequest.JPEG_QUALITY, 90.toByte())
-                still.set(CaptureRequest.JPEG_ORIENTATION, orientation)
-                s.capture(still.build(), null, handler)
-            } catch (e: Exception) {
-                finish(Result.failure(e))
-            }
+            settled = true
+            still()
+        }
+    }
+
+    private fun still() {
+        try {
+            val still = request(CameraDevice.TEMPLATE_STILL_CAPTURE, reader!!.surface)
+            still.set(CaptureRequest.JPEG_QUALITY, 90.toByte())
+            still.set(CaptureRequest.JPEG_ORIENTATION, jpegOrientation(chars!!))
+            session!!.capture(still.build(), null, handler)
+        } catch (e: Exception) {
+            fail(e)
         }
     }
 
@@ -294,14 +324,26 @@ class Shot(
             else -> false
         }
 
-    /** Gives up on the picture and closes the camera. Call on the handler's thread. */
+    /** Gives up on the picture under way, if any, and closes the camera. */
     fun cancel() {
-        finish(Result.failure(CancellationException("cancelled")))
+        fail(CancellationException("cancelled"))
     }
 
-    private fun finish(result: Result<ByteArray>) {
-        if (finished) return
-        finished = true
+    private fun fail(error: Exception) {
+        if (done != null) deliver(Result.failure(error)) else release()
+    }
+
+    private fun deliver(result: Result<ByteArray>) {
+        val done = this.done ?: return
+        this.done = null
+        handler.removeCallbacks(timeout)
+        if (result.isFailure || !keep) release()
+        done(result)
+    }
+
+    private fun release() {
+        if (closed) return
+        closed = true
         handler.removeCallbacks(timeout)
         try {
             session?.close()
@@ -316,6 +358,5 @@ class Shot(
         reader = null
         preview = null
         texture = null
-        done(result)
     }
 }

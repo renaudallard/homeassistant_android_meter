@@ -52,6 +52,9 @@ import android.os.PowerManager
  * does not keep the phone awake. The phone is meant to stay on its
  * charger.
  *
+ * While Home Assistant asks for it, the camera and the torch stay on from
+ * one picture to the next, which then takes a fraction of a second.
+ *
  * Android lets a camera service start only from something the user did:
  * the Start button, or a tap on the notification Resume posts when the
  * service was stopped by a reboot, an update or the system itself.
@@ -61,6 +64,7 @@ class CaptureService : Service() {
     private lateinit var handler: Handler
     private var wakeLock: PowerManager.WakeLock? = null
     @Volatile private var running = false
+    /* The picture under way, or the camera kept on for the next one. */
     private var shot: Shot? = null
 
     private val tick = object : Runnable {
@@ -72,8 +76,8 @@ class CaptureService : Service() {
                 handler.postDelayed(this, BUSY_MS)
                 return
             }
-            shot = shootAndSend(this@CaptureService, handler, false, { running }) { seconds ->
-                shot = null
+            shot = shootAndSend(this@CaptureService, handler, false, { running }, shot) { seconds, kept ->
+                shot = kept
                 if (running) {
                     wakeLock?.acquire((seconds + WAKE_MARGIN) * 1000L)
                     handler.postDelayed(this, seconds * 1000L)
