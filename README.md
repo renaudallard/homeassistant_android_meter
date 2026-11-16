@@ -374,6 +374,11 @@ publishes with each release, at the version of `homeassistant` pinned in
 `requirements-dev.txt`. `tests/synth.py` draws the synthetic meter, and
 `tests/test_simulation.py` runs hours of a meter in use through the reader.
 
+## Privacy
+
+The app sends the pictures and the crop only to your Home Assistant, and
+has no analytics, ads or crash reports. See [PRIVACY.md](PRIVACY.md).
+
 ## License
 
 BSD 2-Clause, see [LICENSE](LICENSE).
