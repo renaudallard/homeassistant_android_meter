@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Android Meter</string>
+    <string name="app_name">Meter Cam for Home Assistant</string>
     <string name="url_hint">Webhook address from Home Assistant</string>
     <string name="camera">Camera</string>
     <string name="camera_entry">%1$s: %2$s, %3$s</string>

@@ -10,12 +10,12 @@
       },
       "pair": {
         "title": "Pair the phone",
-        "description": "**Pair the phone with this code**\n\n1. On the phone, open the camera app and point it at the QR code below.\n2. Tap **Share** on the text the camera shows and pick **Android Meter**. If the camera only offers Copy, copy it, open Android Meter and press **Paste the pairing link**.\n3. Android Meter asks whether to send the pictures to this Home Assistant. Check the address and tap **Use it**.\n\nTo type the address instead: `{webhook_url}`\n\nNo code below means Home Assistant does not know its address on your network: set it in Settings > System > Network, then find the code in Configure > Phone and pairing.\n\nThe phone must be on the same network as Home Assistant. Once the first picture has arrived, press **Set the crop** in Android Meter, then **Find the counter**, and teach the reading. The meter's device page has the same settings as controls, next to the Frame image, for fine tuning.",
+        "description": "**Pair the phone with this code**\n\n1. On the phone, open the camera app and point it at the QR code below.\n2. Tap **Share** on the text the camera shows and pick **Meter Cam for Home Assistant**. If the camera only offers Copy, copy it, open the app and press **Paste the pairing link**.\n3. The app asks whether to send the pictures to this Home Assistant. Check the address and tap **Use it**.\n\nTo type the address instead: `{webhook_url}`\n\nNo code below means Home Assistant does not know its address on your network: set it in Settings > System > Network, then find the code in Configure > Phone and pairing.\n\nThe phone must be on the same network as Home Assistant. Once the first picture has arrived, press **Set the crop** in the app, then **Find the counter**, and teach the reading. The meter's device page has the same settings as controls, next to the Frame image, for fine tuning.",
         "data": {
           "qr_code": "Pairing code"
         },
         "data_description": {
-          "qr_code": "Scan with the phone's camera app, then share the text to Android Meter. It holds this Home Assistant's address."
+          "qr_code": "Scan with the phone's camera app, then share the text to Meter Cam for Home Assistant. It holds this Home Assistant's address."
         }
       }
     }
@@ -43,7 +43,7 @@
       },
       "phone": {
         "title": "Phone and pairing",
-        "description": "To pair a phone, scan the pairing code below with its camera app and share the text to Android Meter. The phone posts to `{webhook_url}`. No code below means Home Assistant does not know its address on your network: set it in Settings > System > Network.",
+        "description": "To pair a phone, scan the pairing code below with its camera app and share the text to Meter Cam for Home Assistant. The phone posts to `{webhook_url}`. No code below means Home Assistant does not know its address on your network: set it in Settings > System > Network.",
         "data": {
           "qr_code": "Pairing code",
           "interval": "Interval",
@@ -51,7 +51,7 @@
           "max_flow": "Largest flow"
         },
         "data_description": {
-          "qr_code": "Scan with the phone's camera app, then share the text to Android Meter. It holds this Home Assistant's address.",
+          "qr_code": "Scan with the phone's camera app, then share the text to Meter Cam for Home Assistant. It holds this Home Assistant's address.",
           "interval": "How long the phone waits between two pictures. While digits are still to learn it may be asked for 10 s instead, or as little as 2 s from a phone that keeps its camera on.",
           "torch": "Light the meter for each picture.",
           "max_flow": "The most that can flow: 6 m³/h for a G4 meter, 10 for a G6, or what your appliances draw together if that is less. Readings that would need more are refused."

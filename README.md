@@ -59,7 +59,8 @@ apart from the others and is left out of the crop.
 
 > Two parts live in this repository: the Home Assistant integration in
 > `custom_components/android_meter`, for Home Assistant **2026.11 or newer**,
-> and the Android Meter app in `android`, for **Android 9 or newer**.
+> and its app, Meter Cam for Home Assistant, in `android`, for **Android 9
+> or newer**.
 
 ## Highlights
 
@@ -147,11 +148,12 @@ the app gets a new version only when it changes.
    QR code and the webhook address, for example
    `http://192.168.1.10:8123/api/webhook/...`.
 3. **Pair the app**: scan the QR code with the phone's camera and share the
-   text it shows to Android Meter, or copy it and press **Paste the pairing
-   link** in the app. The app asks whether to send the pictures to that Home
-   Assistant; it names only the host, as the rest of the address is the
-   webhook's secret. The code is also in Configure > Phone and pairing. Typing
-   the address in the app works too.
+   text it shows to Meter Cam for Home Assistant (named Android Meter up to
+   app 0.1.14), or copy it and press **Paste the pairing link** in the app.
+   The app asks whether to send the pictures to that Home Assistant; it
+   names only the host, as the rest of the address is the webhook's secret.
+   The code is also in Configure > Phone and pairing. Typing the address in
+   the app works too.
 4. **In the app**, pick the camera (the list shows how close each one
    focuses) and press **Take one picture**. A phone close to the meter
    wants the camera that focuses closest, often the wide one, which also

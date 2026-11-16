@@ -1,10 +1,10 @@
 # Privacy policy
 
-Android Meter is a companion app for the Android Meter integration of
-Home Assistant. It does not collect, store or share any personal data
-with its developer or with third parties. It contains no analytics,
-advertising or crash reporting code, and no third-party code apart from
-the Kotlin standard library.
+Meter Cam for Home Assistant is the companion app of the Android Meter
+integration for Home Assistant. It does not collect, store or share any
+personal data with its developer or with third parties. It contains no
+analytics, advertising or crash reporting code, and no third-party code
+apart from the Kotlin standard library.
 
 ## Network
 
@@ -59,7 +59,7 @@ Assistant, which the app has no control over.
 
 ## Children
 
-Android Meter is not directed at children.
+The app is not directed at children.
 
 ## Changes
 
