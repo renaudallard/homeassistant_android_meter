@@ -54,4 +54,6 @@
     <string name="resume_channel">Watch stopped</string>
     <string name="resume_title">The meter watch stopped</string>
     <string name="resume_text">Tap to take pictures again.</string>
+    <string name="privacy">Privacy policy</string>
+    <string name="no_browser">No browser to open %1$s</string>
 </resources>

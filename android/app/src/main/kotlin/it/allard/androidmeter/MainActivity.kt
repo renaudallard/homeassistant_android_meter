@@ -31,6 +31,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -65,7 +66,8 @@ private const val ASKED = "asked"
 /**
  * The address to post to, the camera, Start and Stop, and a button for a
  * single picture, sent too, to aim the phone and set the crop in Home
- * Assistant. The last picture is shown below.
+ * Assistant. The last picture is shown below, then a link to the privacy
+ * policy.
  */
 class MainActivity : Activity() {
     private lateinit var settings: Settings
@@ -134,6 +136,8 @@ class MainActivity : Activity() {
         unlimited = Button(this).apply { text = getString(R.string.battery) }
         column.addView(unlimited, MATCH_PARENT, WRAP_CONTENT)
         column.addView(picture, MATCH_PARENT, WRAP_CONTENT)
+        val privacyButton = Button(this).apply { text = getString(R.string.privacy) }
+        column.addView(privacyButton, MATCH_PARENT, WRAP_CONTENT)
         setContentView(ScrollView(this).apply { addView(column) })
 
         toggle.setOnClickListener { if (Status.running) stop() else withPermissions(Asked.START) }
@@ -141,6 +145,7 @@ class MainActivity : Activity() {
         unlimited.setOnClickListener { askUnlimited() }
         pasteButton.setOnClickListener { paste() }
         crop.setOnClickListener { cropIt() }
+        privacyButton.setOnClickListener { openPrivacy() }
         loadLenses()
         if (savedInstanceState == null) {
             fromIntent(intent)
@@ -320,6 +325,15 @@ class MainActivity : Activity() {
         )
     }
 
+    /* Google Play wants the privacy policy reachable from the app. */
+    private fun openPrivacy() {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL)))
+        } catch (e: ActivityNotFoundException) {
+            Status.say(getString(R.string.no_browser, PRIVACY_URL))
+        }
+    }
+
     private fun withPermissions(action: Asked) {
         if (!save()) {
             Status.say(getString(R.string.bad_url))
@@ -399,5 +413,7 @@ class MainActivity : Activity() {
 
     companion object {
         const val ACTION_RESUME = "it.allard.androidmeter.RESUME"
+        private const val PRIVACY_URL =
+            "https://github.com/renaudallard/homeassistant_android_meter/blob/main/PRIVACY.md"
     }
 }
