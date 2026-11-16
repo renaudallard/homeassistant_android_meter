@@ -1,0 +1,2 @@
+- New name: Meter Cam for Home Assistant
+- Privacy policy button

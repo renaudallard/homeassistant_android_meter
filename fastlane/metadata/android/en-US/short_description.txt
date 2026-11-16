@@ -1,0 +1,1 @@
+Turn a spare phone into a camera on your gas meter, read by Home Assistant

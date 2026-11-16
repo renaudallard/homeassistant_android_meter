@@ -1,0 +1,28 @@
+Meter Cam turns a spare phone into a camera fixed on your gas meter. It takes a picture of the drum counter at the interval Home Assistant asks for and sends it to your Home Assistant, which reads it and keeps the reading as a sensor for the Energy dashboard.
+
+It works with the Android Meter integration for Home Assistant, which you install first, from HACS or by hand: https://github.com/renaudallard/homeassistant_android_meter
+
+LEARNT FROM YOUR METER
+• No cloud and no pre-trained OCR: Home Assistant learns the digits of your own meter from the readings you type in, then goes on learning on its own as the meter turns
+• A reading is chosen among the values the meter can have reached since the last picture, so a doubt delays the reading but never pushes it past the real one
+• Drums caught between two digits play no part in the reading
+
+THE PHONE IS ONLY A CAMERA
+• Pair it by scanning the code Home Assistant shows with the phone's camera, and sharing the text to the app
+• Pick any of the phone's cameras, including the extra back cameras some phones leave out of Android's list
+• Draw the crop over the drum windows on the phone, or let Home Assistant find the counter
+• Keeps taking pictures with the screen off, with its notification showing; keep the phone on its charger
+• Interval, torch and every other setting live in Home Assistant
+
+PRIVATE BY DESIGN
+• Pictures go only to your Home Assistant, over your local network
+• No account, no analytics, no ads, no crash reports, and no dependency beyond Android itself
+• The webhook address, which holds a secret, is kept out of backups, screenshots and Recents
+
+PERMISSIONS
+• Camera: taking the pictures
+• Notifications: the notification of the watch, and the one offering to resume it after a restart
+• Nearby devices (local network, Android 17 and newer): reaching Home Assistant
+• Run without battery limits, asked once with a button: so that Android does not stop the watch to save battery
+
+Free and open source, BSD licensed.
