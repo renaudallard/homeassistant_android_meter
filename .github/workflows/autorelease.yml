@@ -82,7 +82,7 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;36.0.0"
       - name: Build
-        run: ./gradlew --no-daemon :app:assembleRelease
+        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
       - name: Name it after its version
         run: |
           ver=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
@@ -90,12 +90,18 @@ jobs:
             echo "no versionName in app/build.gradle.kts" >&2
             exit 1
           fi
-          mkdir -p ../unsigned
+          mkdir -p ../unsigned ../bundle
           cp app/build/outputs/apk/release/app-release-unsigned.apk "../unsigned/android-meter-$ver.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "../bundle/android-meter-$ver.aab"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: android-meter-unsigned
           path: unsigned/*.apk
+      # Apart, as the sign job signs every APK it is given.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-meter-bundle-unsigned
+          path: bundle/*.aab
 
   # Signed on a machine of its own, which runs none of the repository's
   # code, so the key never meets the build.
@@ -117,6 +123,10 @@ jobs:
         with:
           name: android-meter-unsigned
           path: unsigned
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: android-meter-bundle-unsigned
+          path: bundle
       - name: Sign
         env:
           ANDROID_METER_KEYSTORE: ${{ secrets.ANDROID_METER_KEYSTORE }}
@@ -133,6 +143,15 @@ jobs:
                 --v3-signing-enabled false --v4-signing-enabled false \
                 --alignment-preserved true --out "signed/$(basename "$apk")" "$apk"
           done
+          # Google Play takes the bundle signed with the same key, so that
+          # Play and GitHub installs update each other.
+          mkdir signed-bundle
+          for aab in bundle/*.aab; do
+            cp "$aab" signed-bundle/
+            jarsigner -keystore "$ks" -storepass:env ANDROID_METER_KEYSTORE_PASSWORD \
+                -keypass:env ANDROID_METER_KEYSTORE_PASSWORD -sigalg SHA256withRSA \
+                -digestalg SHA-256 "signed-bundle/$(basename "$aab")" androidmeter
+          done
       # Another key in the secrets would publish an app that updates no install.
       - name: Check the signer
         run: |
@@ -142,10 +161,20 @@ jobs:
                 sed -n 's/^Signer #[0-9]* certificate SHA-256 digest: //p')
             test "$got" = "$cert" || { echo "$apk signed with $got, not $cert" >&2; exit 1; }
           done
+          for aab in signed-bundle/*.aab; do
+            got=$(keytool -printcert -jarfile "$aab" |
+                sed -n 's/^[[:space:]]*SHA256: //p' | tr -d : | tr A-F a-f)
+            test "$got" = "$cert" || { echo "$aab signed with $got, not $cert" >&2; exit 1; }
+          done
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: android-meter
           path: signed/*.apk
+      # For Google Play only, not attached to the release.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-meter-bundle
+          path: signed-bundle/*.aab
 
   release:
     runs-on: ubuntu-latest
