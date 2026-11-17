@@ -44,6 +44,14 @@ The phone sits on the meter in a magnetic holder and takes a picture of the
 counter every minute or so, torch on. It posts each picture to Home
 Assistant, which reads the drums itself and keeps a gas sensor in m³.
 
+<p align="center">
+  <img src="assets/setup.jpg" alt="A phone held in front of the meter's counter by a magnetic holder stuck to the meter body" width="300"/>
+</p>
+<p align="center"><sub>
+The phone on the meter, held by a
+<a href="https://www.amazon.com.be/dp/B0DK6XBS7F">magnetic phone holder</a>.
+</sub></p>
+
 **Nothing pre-trained, no cloud.** The integration learns the digits of
 your own meter from one reading you type in, and the pictures never leave
 your network.
