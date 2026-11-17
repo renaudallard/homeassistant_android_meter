@@ -128,7 +128,9 @@ version of its own that changes only when the app does: a release whose
 app has the version you already run needs nothing on the phone. An update
 installs over the previous one.
 
-The app is also coming to Google Play, as Meter Cam for Home Assistant.
+The app is also on
+[Google Play](https://play.google.com/store/apps/details?id=it.allard.androidmeter),
+as Meter Cam for Home Assistant.
 Google signs the Play build with its own key, so a Play install and a
 GitHub install cannot update each other: to switch, uninstall the app and
 pair it again.
