@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/badge/Home%20Assistant-2026.11%2B-41BDF5?logo=home-assistant&logoColor=white&style=flat-square" alt="Home Assistant"/>
   </a>
   <a href="https://hacs.xyz">
-    <img src="https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square" alt="HACS"/>
+    <img src="https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=flat-square" alt="HACS"/>
   </a>
   <a href="./LICENSE">
     <img src="https://img.shields.io/github/license/renaudallard/homeassistant_android_meter?style=flat-square" alt="License"/>
@@ -105,9 +105,7 @@ apart from the others and is left out of the crop.
 ### The integration
 
 Search for **Android Meter** in Settings > Marketplace (or HACS) and
-install it. If it is not listed, add this repository as a custom
-integration repository first:
-`https://github.com/renaudallard/homeassistant_android_meter`.
+install it.
 
 To install by hand, unpack `android_meter.zip` from the latest release into
 `config/custom_components/android_meter/` and restart Home Assistant.
