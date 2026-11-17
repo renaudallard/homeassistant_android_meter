@@ -143,8 +143,8 @@ jobs:
                 --v3-signing-enabled false --v4-signing-enabled false \
                 --alignment-preserved true --out "signed/$(basename "$apk")" "$apk"
           done
-          # Google Play takes the bundle signed with the same key, so that
-          # Play and GitHub installs update each other.
+          # The same key is the upload key on Google Play, which signs
+          # its build with a key of its own.
           mkdir signed-bundle
           for aab in bundle/*.aab; do
             cp "$aab" signed-bundle/
