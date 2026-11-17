@@ -122,6 +122,11 @@ version of its own that changes only when the app does: a release whose
 app has the version you already run needs nothing on the phone. An update
 installs over the previous one.
 
+The app is also coming to Google Play, as Meter Cam for Home Assistant.
+Google signs the Play build with its own key, so a Play install and a
+GitHub install cannot update each other: to switch, uninstall the app and
+pair it again.
+
 To build it yourself, run `./gradlew assembleRelease` in `android/` (JDK 21,
 Android SDK platform 37).
 
